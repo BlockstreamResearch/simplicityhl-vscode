@@ -5,13 +5,13 @@ on:
     branches:
       - master
     paths:
-      - 'vscode/**'
+      - ./'**'
       - '.github/workflows/typescript.yml'
   pull_request:
     branches:
       - master
     paths:
-      - 'vscode/**'
+      - './**'
       - '.github/workflows/typescript.yml'
   workflow_dispatch:
 
@@ -35,7 +35,7 @@ jobs:
     
     defaults:
       run:
-        working-directory: ./vscode
+        working-directory: ./
     
     steps:
       - uses: actions/checkout@v4
@@ -44,7 +44,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           cache: 'npm'
-          cache-dependency-path: vscode/package-lock.json
+          cache-dependency-path: ./package-lock.json
       
       - name: Install dependencies
         run: npm ci
