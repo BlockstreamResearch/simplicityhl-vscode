@@ -6,7 +6,7 @@
   "publisher": "Blockstream",
   "repository": {
     "type": "git",
-    "url": "https://github.com/BlockstreamResearch/SimplicityHL"
+    "url": "https://github.com/BlockstreamResearch/simplicityhl-vscode"
   },
   "engines": {
     "vscode": "^1.85.0"
