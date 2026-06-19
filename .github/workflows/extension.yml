@@ -13,10 +13,8 @@ jobs:
           node-version: 20
 
       - run: npm ci
-        working-directory: vscode
 
       - name: Verify tag matches extension version
-        working-directory: vscode
         shell: bash
         run: |
           TAG="${GITHUB_REF##*/}"
@@ -36,7 +34,6 @@ jobs:
         uses: HaaLeo/publish-vscode-extension@v2
         with:
           pat: ${{ secrets.OPEN_VSX_TOKEN }}
-          packagePath: vscode
           skipDuplicate: true
 
       - name: Publish to Visual Studio Marketplace
@@ -44,5 +41,4 @@ jobs:
         with:
           pat: ${{ secrets.VS_MARKETPLACE_TOKEN }}
           registryUrl: https://marketplace.visualstudio.com
-          packagePath: vscode
           skipDuplicate: true
