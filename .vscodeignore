@@ -1,0 +1,11 @@
+.vscodeignore
+node_modules
+src
+docs
+.gitignore
+tsconfig.json
+esbuild.js
+package-lock.json
+.github
+eslint.config.js
+*.ts
