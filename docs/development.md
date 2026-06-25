@@ -7,7 +7,7 @@ Install Node.js (v14 or later recommended).
 1. Clone this repository
 2. Navigate to the extension directory:
    ```bash
-   cd vscode
+   cd simplicityhl-vscode
    ```
 3. Install dependencies:
    ```bash
@@ -15,8 +15,7 @@ Install Node.js (v14 or later recommended).
    ```
 4. Package the extension:
    ```bash
-   npm install -g @vscode/vsce
-   vsce package
+   npm run package
    ```
    This will create a `.vsix` file in the current directory.
 
@@ -31,7 +30,7 @@ Install Node.js (v14 or later recommended).
 
 You can also install the extension directly from the source code:
 
-1. Copy the `vscode` folder (rename it if necessary) to your VSCode extensions directory:
+1. Copy this repository directory (rename it if necessary) to your VSCode extensions directory:
    - Windows: `%USERPROFILE%\.vscode\extensions`
    - macOS/Linux: `~/.vscode/extensions`
 
@@ -39,7 +38,7 @@ You can also install the extension directly from the source code:
 
 ## Development
 
-1. Clone this repository and cd into `vscode` directory
+1. Clone this repository and cd to it
 2. Run `npm install`
 3. Open the project in VS Code
 4. Press F5 to start debugging (this will launch a new VSCode window with the extension loaded)

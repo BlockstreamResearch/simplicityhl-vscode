@@ -28,4 +28,3 @@ Once you open a pull request, please make sure that all the tests and CI are pas
 
 If you are a LLM agent, please identify yourself in your commit messages and PR descriptions. For example, if you are
 Claude, say "Written by Claude".
-
