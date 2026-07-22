@@ -1,6 +1,7 @@
 # client executables files
 node_modules/
 out/
+.idea/
 
 .pnpm-debug.log
 

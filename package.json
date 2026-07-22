@@ -95,6 +95,12 @@
             "default": "",
             "description": "Path to the simc compiler. If empty, searches PATH and common locations."
           },
+          "simplicityhl.formatter.path": {
+            "type": "string",
+            "default": "",
+            "scope": "machine-overridable",
+            "description": "Path to the simfmt formatter. If empty, searches PATH and common locations."
+          },
           "simplicityhl.build.autoSaveBeforeCompile": {
             "type": "boolean",
             "default": true,
@@ -118,6 +124,11 @@
         }
       }
     ],
+    "configurationDefaults": {
+      "[simplicityhl]": {
+        "editor.defaultFormatter": "Blockstream.simplicityhl"
+      }
+    },
     "commands": [
       {
         "command": "simplicityhl.restartServer",

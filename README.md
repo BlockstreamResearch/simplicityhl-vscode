@@ -14,6 +14,20 @@ SimplicityHL is a high-level language for writing Simplicity smart contracts. Si
 
 The extension installs or connects to the [SimplicityHL language server](https://github.com/BlockstreamResearch/simplicityhl-lsp), which provides language intelligence:
 
+## Formatting
+
+This extension provides SimplicityHL support for VS Code's native **Format Document** command and its standard keybinding. It runs the external `simfmt` formatter against the current editor contents, so unsaved changes are formatted without writing directly to disk.
+
+Install `simfmt` separately and make it available on `PATH`, or configure its full path:
+
+```json
+{
+  "simplicityhl.formatter.path": "/path/to/simfmt"
+}
+```
+
+Project formatting options are read from `simfmt.toml` or `.simfmt.toml` in the document directory or one of its parents.
+
 - Error diagnostics
 ![diagnostics](https://github.com/user-attachments/assets/54315645-464b-40c3-bb72-c6e8c4bc0ad5)
 
