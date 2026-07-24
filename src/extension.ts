@@ -8,7 +8,7 @@ import { SimplicityHLCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";
 import { COMMAND_IDS } from "./contracts";
 import { registerTaskProvider } from "./tasks/provider";
-import { registerFormattingProvider } from "./format";
+import { registerFormattingCommands } from "./format";
 
 let client: LspClient | undefined;
 let compiler: SimplicityHLCompiler | undefined;
@@ -33,7 +33,7 @@ export function activate(context: ExtensionContext): void {
     return compiler;
   });
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
-  registerFormattingProvider(context);
+  registerFormattingCommands(context);
 }
 
 export async function deactivate(): Promise<void> {

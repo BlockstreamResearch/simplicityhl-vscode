@@ -155,6 +155,11 @@
         "command": "simplicityhl.compileJson",
         "title": "Compile to JSON",
         "category": "SimplicityHL"
+      },
+      {
+        "command": "simplicityhl.formatFile",
+        "title": "Format Current File",
+        "category": "SimplicityHL"
       }
     ],
     "menus": {
@@ -175,6 +180,11 @@
           "when": "resourceLangId == simplicityhl",
           "command": "simplicityhl.compileWithWitness",
           "group": "1_modification"
+        },
+        {
+          "when": "resourceLangId == simplicityhl",
+          "command": "simplicityhl.formatFile",
+          "group": "1_modification"
         }
       ],
       "commandPalette": [
@@ -192,6 +202,10 @@
         },
         {
           "command": "simplicityhl.compileJson",
+          "when": "resourceLangId == simplicityhl"
+        },
+        {
+          "command": "simplicityhl.formatFile",
           "when": "resourceLangId == simplicityhl"
         }
       ]

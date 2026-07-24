@@ -1,21 +1,76 @@
-// SimplicityHL document formatting backed by the external `simfmt` binary.
+// Command handlers for SimplicityHL formatting.
+// Runs the external `simfmt` binary against the current saved .simf file.
 
 import * as cp from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
 import { findExecutable } from "./find_executable";
 
-const FORMATTER_ARGS = ["--emit", "stdout", "--quiet", "--color", "never"];
+const FORMATTER_ARGS = ["--color", "never"];
+// Parses "error: ..." message from the stderr.
+const DIAGNOSTIC_HEADER = /^error(?:\[[^\]]+\])?:\s*(.+)$/gm;
+// Parses problematic place location from stderr to notify a user.
+const DIAGNOSTIC_LOCATION = /^\s*-->\s+(.+):(\d+):(\d+)\s*$/m;
 
-// Registers the native VS Code "Format Document" provider for .simf files.
-export function registerFormattingProvider(context: vscode.ExtensionContext): void {
+interface FormatResult {
+  success: boolean;
+  output: string;
+}
+
+interface FormatterDiagnostic {
+  message: string;
+  filePath: string;
+  line: number;
+  column: number;
+}
+
+// Validates and saves the active editor so simfmt always receives a real file path.
+async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefined> {
+  const editor = vscode.window.activeTextEditor;
+  if (!editor) {
+    await vscode.window.showWarningMessage("No active file to format");
+    return undefined;
+  }
+
+  const document = editor.document;
+  if (document.languageId !== "simplicityhl") {
+    await vscode.window.showWarningMessage("Current file is not a SimplicityHL file (.simf)");
+    return undefined;
+  }
+
+  if (document.uri.scheme !== "file" || !document.uri.fsPath) {
+    await vscode.window.showWarningMessage("Save the SimplicityHL document before formatting it.");
+    return undefined;
+  }
+
+  if (document.isDirty && !(await document.save())) {
+    await vscode.window.showWarningMessage("Save the SimplicityHL document before formatting it.");
+    return undefined;
+  }
+
+  return document;
+}
+
+// Registers the Format Current File command and the native VS Code formatter.
+export function registerFormattingCommands(context: vscode.ExtensionContext): void {
   const formatter = new SimplicityHLFormatter();
+
+  const formatFileCommand = vscode.commands.registerCommand(
+    "simplicityhl.formatFile",
+    async () => {
+      const document = await getSimplicityHLDocument();
+      if (!document) return;
+
+      await formatter.formatDocument(document);
+    },
+  );
+
   const provider = vscode.languages.registerDocumentFormattingEditProvider(
     { language: "simplicityhl" },
     formatter,
   );
 
-  context.subscriptions.push(formatter, provider);
+  context.subscriptions.push(formatter, formatFileCommand, provider);
 }
 
 class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vscode.Disposable {
@@ -34,129 +89,160 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
       return undefined;
     }
 
-    if (document.uri.scheme === "untitled") {
+    const result = await this.formatDocument(document);
+    return result.success ? [] : undefined;
+  }
+
+  public async formatDocument(document: vscode.TextDocument): Promise<FormatResult> {
+    this.outputChannel.clear();
+    this.outputChannel.show(true);
+
+    if (document.uri.scheme !== "file" || !document.uri.fsPath) {
       return this.fail("Save the SimplicityHL document before formatting it.");
     }
 
-    try {
-      const originalText = document.getText();
-      const formattedText = await this.format(document, originalText, token);
-
-      if (formattedText === undefined || formattedText === originalText) {
-        return undefined;
-      }
-
-      return [
-        vscode.TextEdit.replace(
-          new vscode.Range(
-            document.positionAt(0),
-            document.positionAt(originalText.length),
-          ),
-          formattedText,
-        ),
-      ];
-    } catch (error) {
-      const message = error instanceof Error ? error.message : String(error);
-      return this.fail(message);
+    if (document.isDirty && !(await document.save())) {
+      return this.fail("Save the SimplicityHL document before formatting it.");
     }
-  }
 
-  private async format(
-    document: vscode.TextDocument,
-    input: string,
-    token: vscode.CancellationToken,
-  ): Promise<string | undefined> {
-    const formatterPath = getSimfmtPath();
-    const cwd = path.dirname(document.uri.fsPath);
+    let formatterPath: string;
+    try {
+      formatterPath = getSimfmtPath();
+    } catch (error) {
+      return this.fail(getErrorMessage(error));
+    }
 
-    this.outputChannel.clear();
-    this.outputChannel.appendLine(`Formatting: ${document.uri.fsPath}`);
-    this.outputChannel.appendLine(`Command: ${formatterPath} ${FORMATTER_ARGS.join(" ")}`);
+    const filePath = document.uri.fsPath;
+    const args = [filePath, ...FORMATTER_ARGS];
+    this.outputChannel.appendLine(`Formatting: ${filePath}`);
+    this.outputChannel.appendLine(`Command: ${formatCommand(formatterPath, args)}`);
     this.outputChannel.appendLine("");
 
-    return new Promise((resolve, reject) => {
-      let stdout = "";
-      let stderr = "";
+    const result = await this.runFormatter(formatterPath, args, path.dirname(filePath));
+    if (result.success) {
+      this.outputChannel.appendLine(`Formatting successful: ${filePath}`);
+      void vscode.window.showInformationMessage("SimplicityHL formatted successfully!");
+      return result;
+    }
+
+    const diagnostics = parseFormatterDiagnostics(result.output);
+
+    this.outputChannel.appendLine("Formatting failed. See the diagnostics above for details.");
+    this.outputChannel.show(true);
+    void vscode.window.showErrorMessage(getFailureNotification(diagnostics, result.output));
+
+    return result;
+  }
+
+  private async runFormatter(
+    formatterPath: string,
+    args: string[],
+    cwd: string,
+  ): Promise<FormatResult> {
+    return new Promise((resolve) => {
+      let output = "";
       let settled = false;
-      let cancelled = token.isCancellationRequested;
-      let formatterProcess: cp.ChildProcess | undefined;
 
-      const cancellation = token.onCancellationRequested(() => {
-        cancelled = true;
-        formatterProcess?.kill();
-      });
-
-      const finish = (result?: string, error?: Error) => {
+      const finish = (success: boolean, message?: string) => {
         if (settled) return;
         settled = true;
-        cancellation.dispose();
 
-        if (error) {
-          reject(error);
-        } else {
-          resolve(result);
+        if (message) {
+          output += message;
+          this.outputChannel.append(message);
         }
+
+        resolve({ success, output });
       };
 
       try {
-        const process = cp.spawn(formatterPath, FORMATTER_ARGS, { cwd });
-        formatterProcess = process;
-
-        process.stdout?.on("data", (data: Buffer) => {
-          stdout += data.toString();
-        });
-
-        process.stderr?.on("data", (data: Buffer) => {
+        const process = cp.spawn(formatterPath, args, { cwd });
+        const appendOutput = (data: Buffer) => {
           const text = data.toString();
-          stderr += text;
+          output += text;
           this.outputChannel.append(text);
-        });
+        };
 
-        process.stdin?.on("error", (error) => {
-          if (cancelled) {
-            finish();
-            return;
-          }
-          finish(undefined, new Error(`Unable to send input to simfmt: ${error.message}`));
-        });
+        process.stdout?.on("data", appendOutput);
+        process.stderr?.on("data", appendOutput);
 
         process.on("error", (error) => {
-          if (cancelled) {
-            finish();
-            return;
-          }
-          finish(undefined, new Error(`Unable to start simfmt: ${error.message}`));
+          finish(false, `Unable to start simfmt: ${error.message}\n`);
         });
 
         process.on("close", (code) => {
-          if (cancelled) {
-            finish();
-            return;
-          }
-
           if (code === 0) {
-            finish(stdout);
+            finish(true);
             return;
           }
 
-          const detail = stderr.trim() || `simfmt exited with code ${code ?? "unknown"}.`;
-          finish(undefined, new Error(detail));
+          finish(false, `simfmt exited with code ${code ?? "unknown"}.\n`);
         });
-
-        process.stdin?.end(input);
       } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        finish(undefined, new Error(`Unable to start simfmt: ${message}`));
+        finish(false, `Unable to start simfmt: ${getErrorMessage(error)}\n`);
       }
     });
   }
 
-  private fail(message: string): never {
+  private fail(message: string): FormatResult {
     this.outputChannel.appendLine(`Formatting failed: ${message}`);
     this.outputChannel.show(true);
     void vscode.window.showErrorMessage(`SimplicityHL formatting failed: ${message}`);
-    throw new Error(message);
+    return { success: false, output: message };
   }
+}
+
+// Parses simfmt's compiler-style diagnostics, including `--> path:line:column` locations.
+export function parseFormatterDiagnostics(output: string): FormatterDiagnostic[] {
+  const headers = [...output.matchAll(DIAGNOSTIC_HEADER)];
+
+  return headers.flatMap((header, index) => {
+    const blockStart = (header.index ?? 0) + header[0].length;
+    const blockEnd = headers[index + 1]?.index ?? output.length;
+    const block = output.slice(blockStart, blockEnd);
+    const location = block.match(DIAGNOSTIC_LOCATION);
+
+    if (!location) {
+      return [];
+    }
+
+    return [{
+      message: header[1].trim(),
+      filePath: location[1],
+      line: Number(location[2]),
+      column: Number(location[3]),
+    }];
+  });
+}
+
+function formatCommand(command: string, args: string[]): string {
+  return [command, ...args]
+    .map((argument) => (/\s/.test(argument) ? JSON.stringify(argument) : argument))
+    .join(" ");
+}
+
+function getFailureMessage(output: string): string {
+  const lines = output.trim().split(/\r?\n/);
+  return lines[0] || "simfmt failed without reporting an error.";
+}
+
+function getFailureNotification(diagnostics: FormatterDiagnostic[], output: string): string {
+  if (diagnostics.length === 0) {
+    return `SimplicityHL formatting failed: ${getFailureMessage(output)}`;
+  }
+
+  const messages = diagnostics
+    .map((diagnostic) => {
+      const fileName = path.basename(diagnostic.filePath);
+      return `${fileName}:${diagnostic.line}:${diagnostic.column} ${diagnostic.message}`;
+    })
+    .join("\n");
+
+  return `SimplicityHL formatting failed:\n${messages}`;
+}
+
+function getErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
 }
 
 // Locate the simfmt binary using an explicit user setting before PATH discovery.

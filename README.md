@@ -16,7 +16,7 @@ The extension installs or connects to the [SimplicityHL language server](https:/
 
 ## Formatting
 
-This extension provides SimplicityHL support for VS Code's native **Format Document** command and its standard keybinding. It runs the external `simfmt` formatter against the current editor contents, so unsaved changes are formatted without writing directly to disk.
+This extension provides the native **Format Document** command and **SimplicityHL: Format Current File**. The document is saved first, then the formatter receives its absolute path and formats the file in place. Formatter errors appear in the Output panel and VS Code notifications; language diagnostics remain owned by the language server.
 
 Install `simfmt` separately and make it available on `PATH`, or configure its full path:
 
