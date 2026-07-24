@@ -4,6 +4,7 @@
 import * as cp from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
+import { getActiveSimplicityHLDocument } from "./document";
 import { findExecutable } from "./find_executable";
 
 const FORMATTER_ARGS = ["--color", "never"];
@@ -24,31 +25,14 @@ interface FormatterDiagnostic {
   column: number;
 }
 
-// Validates and saves the active editor so simfmt always receives a real file path.
+// Saves the active editor so simfmt always receives a real file path.
 async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefined> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    await vscode.window.showWarningMessage("No active file to format");
-    return undefined;
-  }
-
-  const document = editor.document;
-  if (document.languageId !== "simplicityhl") {
-    await vscode.window.showWarningMessage("Current file is not a SimplicityHL file (.simf)");
-    return undefined;
-  }
-
-  if (document.uri.scheme !== "file" || !document.uri.fsPath) {
-    await vscode.window.showWarningMessage("Save the SimplicityHL document before formatting it.");
-    return undefined;
-  }
-
-  if (document.isDirty && !(await document.save())) {
-    await vscode.window.showWarningMessage("Save the SimplicityHL document before formatting it.");
-    return undefined;
-  }
-
-  return document;
+  return getActiveSimplicityHLDocument({
+    action: "format",
+    saveBeforeAction: true,
+    requireFilePath: true,
+    failIfSaveFails: true,
+  });
 }
 
 // Registers the Format Current File command and the native VS Code formatter.

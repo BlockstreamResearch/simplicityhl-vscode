@@ -8,9 +8,9 @@ import type { CompileOptions } from "../compiler/args";
 import {
   COMMAND_IDS,
   CONFIGURATION_SECTION,
-  LANGUAGE_IDS,
   SETTINGS,
 } from "../contracts";
+import { getActiveSimplicityHLDocument } from "../document";
 
 function showCompilationFailed(): void {
   vscode.window.showErrorMessage(
@@ -18,37 +18,18 @@ function showCompilationFailed(): void {
   );
 }
 
-// Validates that the active editor contains a SimplicityHL file
+// Gets the active SimplicityHL file and auto-saves it when configured.
 async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefined> {
-  const editor = vscode.window.activeTextEditor;
-  if (!editor) {
-    vscode.window.showWarningMessage("No active file to compile");
-    return undefined;
-  }
-
-  const document = editor.document;
-  if (document.languageId !== LANGUAGE_IDS.source) {
-    vscode.window.showWarningMessage("Current file is not a SimplicityHL file (.simf)");
-    return undefined;
-  }
-
-  // Auto-save before compile if enabled
   const config = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
   const autoSave = config.get<boolean>(
     SETTINGS.autoSaveBeforeCompile.key,
     SETTINGS.autoSaveBeforeCompile.default,
   );
-  if (autoSave && document.isDirty) {
-    const saved = await document.save();
-    if (!saved) {
-      void vscode.window.showWarningMessage(
-        "SimplicityHL compilation canceled because the file could not be saved.",
-      );
-      return undefined;
-    }
-  }
-
-  return document;
+  return getActiveSimplicityHLDocument({
+    action: "compile",
+    saveBeforeAction: autoSave,
+    failIfSaveFails: true,
+  });
 }
 
 async function compileActiveDocument(
