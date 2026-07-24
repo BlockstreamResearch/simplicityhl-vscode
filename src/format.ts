@@ -79,7 +79,6 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
 
   public async formatDocument(document: vscode.TextDocument): Promise<FormatResult> {
     this.outputChannel.clear();
-    this.outputChannel.show(true);
 
     if (document.uri.scheme !== "file" || !document.uri.fsPath) {
       return this.fail("Save the SimplicityHL document before formatting it.");
@@ -109,6 +108,7 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
       return result;
     }
 
+    this.outputChannel.show(true);
     const diagnostics = parseFormatterDiagnostics(result.output);
 
     this.outputChannel.appendLine("Formatting failed. See the diagnostics above for details.");
