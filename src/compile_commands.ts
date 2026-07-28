@@ -5,6 +5,12 @@ import * as vscode from "vscode";
 import * as path from "path";
 import { getCompiler } from "./compile";
 
+function showCompilationFailed(): void {
+  vscode.window.showErrorMessage(
+    "Compilation failed. See the SimplicityHL Compiler output for details."
+  );
+}
+
 // Validates that the active editor contains a SimplicityHL file
 async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefined> {
   const editor = vscode.window.activeTextEditor;
@@ -23,7 +29,13 @@ async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefine
   const config = vscode.workspace.getConfiguration("simplicityhl");
   const autoSave = config.get<boolean>("build.autoSaveBeforeCompile", true);
   if (autoSave && document.isDirty) {
-    await document.save();
+    const saved = await document.save();
+    if (!saved) {
+      void vscode.window.showWarningMessage(
+        "SimplicityHL compilation canceled because the file could not be saved.",
+      );
+      return undefined;
+    }
   }
 
   return document;
@@ -54,9 +66,7 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
           vscode.window.showInformationMessage("Program copied to clipboard");
         }
       } else {
-        vscode.window.showErrorMessage(
-          "Compilation failed. See Problems panel for details."
-        );
+        showCompilationFailed();
       }
     }
   );
@@ -74,9 +84,7 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
       if (result.success) {
         vscode.window.showInformationMessage("Compiled with debug symbols!");
       } else {
-        vscode.window.showErrorMessage(
-          "Compilation failed. See Problems panel for details."
-        );
+        showCompilationFailed();
       }
     }
   );
@@ -136,9 +144,7 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
           vscode.window.showInformationMessage("Witness copied to clipboard");
         }
       } else {
-        vscode.window.showErrorMessage(
-          "Compilation failed. See Problems panel for details."
-        );
+        showCompilationFailed();
       }
     }
   );
@@ -169,9 +175,7 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
         });
         await vscode.window.showTextDocument(doc);
       } else {
-        vscode.window.showErrorMessage(
-          "Compilation failed. See Problems panel for details."
-        );
+        showCompilationFailed();
       }
     }
   );

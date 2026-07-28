@@ -17,6 +17,30 @@
     ],
     "description": "Entry point function"
   },
+  "Use Module Item": {
+    "prefix": "use",
+    "body": "use ${1:crate}::${2:module}::${0:item};",
+    "description": "Import an item from a local module or Simplex dependency"
+  },
+  "Public Module": {
+    "prefix": "pubmod",
+    "body": [
+      "pub mod ${1:name} {",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Declare a public inline module"
+  },
+  "Public Enum": {
+    "prefix": "pubenum",
+    "body": [
+      "pub enum ${1:Name} {",
+      "    ${2:Variant},",
+      "    ${0}",
+      "}"
+    ],
+    "description": "Declare an experimental public enum"
+  },
   "Let Binding": {
     "prefix": "let",
     "body": "let ${1:name}: ${2:Type} = ${0};",

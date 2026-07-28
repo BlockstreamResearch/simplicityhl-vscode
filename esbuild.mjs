@@ -51,7 +51,7 @@ const esbuildProblemMatcherPlugin = {
   },
 };
 
-main().catch((e) => {
-  console.error(e);
+main().catch((error) => {
+  console.error(error);
   process.exit(1);
 });

@@ -4,8 +4,10 @@ src
 docs
 .gitignore
 tsconfig.json
-esbuild.js
+esbuild.mjs
 package-lock.json
 .github
-eslint.config.js
+.idea
+eslint.config.ts
 *.ts
+dist/**/*.map
