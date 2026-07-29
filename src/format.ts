@@ -108,11 +108,9 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
       return result;
     }
 
-    this.outputChannel.show(true);
     const diagnostics = parseFormatterDiagnostics(result.output);
 
     this.outputChannel.appendLine("Formatting failed. See the diagnostics above for details.");
-    this.outputChannel.show(true);
     void vscode.window.showErrorMessage(getFailureNotification(diagnostics, result.output));
 
     return result;
@@ -170,7 +168,6 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
 
   private fail(message: string): FormatResult {
     this.outputChannel.appendLine(`Formatting failed: ${message}`);
-    this.outputChannel.show(true);
     void vscode.window.showErrorMessage(`SimplicityHL formatting failed: ${message}`);
     return { success: false, output: message };
   }
