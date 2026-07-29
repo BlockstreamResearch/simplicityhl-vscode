@@ -3,6 +3,8 @@
 
 import * as vscode from "vscode";
 import { getSimcPath } from "./compile";
+import { compilerFeatureArguments } from "./features";
+import { getExperimentalFeatures } from "./settings";
 
 // Task definition schema - matches taskDefinitions in package.json
 export interface SimplicityHLTaskDefinition extends vscode.TaskDefinition {
@@ -15,53 +17,47 @@ export interface SimplicityHLTaskDefinition extends vscode.TaskDefinition {
 // Provides tasks to VSCode's task system
 export class SimplicityHLTaskProvider implements vscode.TaskProvider {
   static TaskType = "simplicityhl";
-  private tasks: vscode.Task[] | undefined;
 
   // Called by VSCode to get list of available tasks
   public async provideTasks(): Promise<vscode.Task[]> {
-    if (!this.tasks) {
-      this.tasks = await this.buildTasks();
+    try {
+      const simcPath = getSimcPath();
+      const featureArgs = compilerFeatureArguments(getExperimentalFeatures());
+      const commands = ["compile", "compile-debug", "compile-with-witness"] as const;
+      return commands.map((command) => this.createTask(
+        { type: "simplicityhl", command },
+        simcPath,
+        featureArgs,
+      ));
+    } catch (error) {
+      showTaskError(error);
+      return [];
     }
-    return this.tasks;
   }
 
   // Called when user runs a task from tasks.json
   public async resolveTask(task: vscode.Task): Promise<vscode.Task | undefined> {
     const definition = task.definition as SimplicityHLTaskDefinition;
     if (definition.type === SimplicityHLTaskProvider.TaskType) {
-      return this.createTask(definition);
+      try {
+        return this.createTask(
+          definition,
+          getSimcPath(),
+          compilerFeatureArguments(getExperimentalFeatures()),
+        );
+      } catch (error) {
+        showTaskError(error);
+      }
     }
     return undefined;
   }
 
-  // Build default tasks shown in task picker
-  private async buildTasks(): Promise<vscode.Task[]> {
-    const tasks: vscode.Task[] = [];
-
-    // Basic compile task
-    tasks.push(await this.createTask({
-      type: "simplicityhl",
-      command: "compile",
-    }));
-
-    // Compile with debug symbols
-    tasks.push(await this.createTask({
-      type: "simplicityhl",
-      command: "compile-debug",
-    }));
-
-    // Compile with witness
-    tasks.push(await this.createTask({
-      type: "simplicityhl",
-      command: "compile-with-witness",
-    }));
-
-    return tasks;
-  }
-
   // Create a VSCode task from our definition
-  private async createTask(definition: SimplicityHLTaskDefinition): Promise<vscode.Task> {
-    const simcPath = getSimcPath();
+  private createTask(
+    definition: SimplicityHLTaskDefinition,
+    simcPath: string,
+    featureArgs: string[],
+  ): vscode.Task {
     let args: string[] = [];
     let taskName: string;
 
@@ -69,15 +65,15 @@ export class SimplicityHLTaskProvider implements vscode.TaskProvider {
     switch (definition.command) {
       case "compile":
         taskName = "Compile SimplicityHL";
-        args = [definition.file || "${file}"];
+        args = [definition.file || "${file}", ...featureArgs];
         break;
       case "compile-debug":
         taskName = "Compile SimplicityHL (Debug)";
-        args = [definition.file || "${file}", "--debug"];
+        args = [definition.file || "${file}", ...featureArgs, "--debug"];
         break;
       case "compile-with-witness":
         taskName = "Compile with Witness";
-        args = [definition.file || "${file}"];
+        args = [definition.file || "${file}", ...featureArgs];
         args.push("-w");
         if (definition.witnessFile) {
           args.push(definition.witnessFile);
@@ -109,6 +105,13 @@ export class SimplicityHLTaskProvider implements vscode.TaskProvider {
     return task;
   }
 
+}
+
+function showTaskError(error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error);
+  void vscode.window.showErrorMessage(
+    `Unable to prepare SimplicityHL task: ${message}`,
+  );
 }
 
 // Register the task provider with VSCode

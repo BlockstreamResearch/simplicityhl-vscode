@@ -1,4 +1,4 @@
-name: VS Code extension (ESLint)
+name: VS Code extension
 
 on:
   push:
@@ -16,8 +16,8 @@ on:
   workflow_dispatch:
 
 jobs:
-  eslint:
-    name: Lint on Node v${{ matrix.node }}
+  checks:
+    name: Check on Node v${{ matrix.node }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     
@@ -51,7 +51,7 @@ jobs:
         env:
           CI: true
       
-      - name: Run ESLint
-        run: npm run eslint-check
+      - name: Run checks
+        run: npm run check
         env:
           CI: true

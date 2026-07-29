@@ -2,9 +2,11 @@
 // Wraps the `simc` binary and parses its output for VSCode integration.
 
 import * as vscode from "vscode";
-import * as path from "path";
 import * as cp from "child_process";
+import * as path from "node:path";
+import { compilerFeatureArguments } from "./features";
 import { findExecutable } from "./find_server";
+import { getExperimentalFeatures } from "./settings";
 
 // Options for compilation
 export interface CompileOptions {
@@ -35,8 +37,20 @@ export class SimplicityHLCompiler {
     filePath: string,
     options: CompileOptions = {}
   ): Promise<CompileResult> {
-    const simcPath = getSimcPath();
-    const args: string[] = [filePath];
+    this.outputChannel.clear();
+    this.outputChannel.show(true);
+    let simcPath: string;
+    try {
+      simcPath = getSimcPath();
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      this.outputChannel.appendLine(`Unable to prepare compilation: ${message}`);
+      return { success: false, error: message };
+    }
+    const args: string[] = [
+      filePath,
+      ...compilerFeatureArguments(getExperimentalFeatures()),
+    ];
 
     // Add optional witness file
     if (options.witnessFile) {
@@ -52,10 +66,10 @@ export class SimplicityHLCompiler {
     }
 
     // Show compilation info in output channel
-    this.outputChannel.clear();
-    this.outputChannel.show(true);
     this.outputChannel.appendLine(`Compiling: ${filePath}`);
-    this.outputChannel.appendLine(`Command: ${simcPath} ${args.join(" ")}`);
+    this.outputChannel.appendLine(
+      `Command: ${[simcPath, ...args].map(shellDisplay).join(" ")}`,
+    );
     this.outputChannel.appendLine("");
 
     return new Promise((resolve) => {
@@ -128,6 +142,10 @@ export class SimplicityHLCompiler {
   public dispose(): void {
     this.outputChannel.dispose();
   }
+}
+
+function shellDisplay(argument: string): string {
+  return /[\s"']/u.test(argument) ? JSON.stringify(argument) : argument;
 }
 
 // Singleton instance for extension lifetime

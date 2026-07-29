@@ -1,6 +1,6 @@
 ## Extension installation from source code
 
-Install Node.js (v14 or later recommended).
+Install Node.js 20.19 or later (Node.js 22 LTS is recommended).
 
 ### Local Installation
 
@@ -25,6 +25,10 @@ Install Node.js (v14 or later recommended).
    - Click on the "..." menu in the top-right of the Extensions view
    - Select "Install from VSIX..."
    - Navigate to and select the `.vsix` file you created
+
+To test a local language-server build, set `simplicityhl.server.path` to its absolute executable path.
+Enable `simplicityhl.experimentalFeatures.imports` or `simplicityhl.experimentalFeatures.enums` as needed.
+Open a project at its Simplex root so the language server can discover its manifest.
 
 ### Alternative Installation Method
 

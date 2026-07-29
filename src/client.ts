@@ -1,7 +1,13 @@
 // LSP client for SimplicityHL language server.
 // Manages connection lifecycle and integrates with status bar.
 
-import { window } from "vscode";
+import * as fs from "node:fs";
+import process from "node:process";
+import {
+  ExtensionContext,
+  window,
+  workspace,
+} from "vscode";
 import {
   Executable,
   LanguageClient,
@@ -9,19 +15,45 @@ import {
   ServerOptions,
 } from "vscode-languageclient/node";
 import { ensureExecutable } from "./find_server";
+import { lspInitializationOptions } from "./settings";
 import { getStatusBar } from "./statusBar";
-import process from "node:process";
 
 export class LspClient {
   private client: LanguageClient | undefined;
+
+  public constructor(context: ExtensionContext) {
+    context.subscriptions.push(
+      workspace.onDidChangeConfiguration((event) => {
+        if (!event.affectsConfiguration("simplicityhl")) {
+          return;
+        }
+        if (event.affectsConfiguration("simplicityhl.server.path")) {
+          void this.restart();
+        }
+      }),
+    );
+  }
 
   public async start(): Promise<void> {
     const statusBar = getStatusBar();
     statusBar.update("starting");
     statusBar.show();
 
-    const command = "simplicityhl-lsp";
-    const execPath = await ensureExecutable(command);
+    const configuration = workspace.getConfiguration("simplicityhl");
+    const configuredPath = configuration.get<string>("server.path", "").trim();
+    let execPath: string | null;
+    if (configuredPath) {
+      if (!fs.existsSync(configuredPath)) {
+        statusBar.update("error");
+        window.showErrorMessage(
+          `Configured SimplicityHL language server does not exist: ${configuredPath}`,
+        );
+        return;
+      }
+      execPath = configuredPath;
+    } else {
+      execPath = await ensureExecutable("simplicityhl-lsp");
+    }
 
     if (!execPath) {
       statusBar.update("disconnected");
@@ -46,6 +78,10 @@ export class LspClient {
         { scheme: "file", language: "simplicityhl" },
         { scheme: "file", language: "simplicityhl-witness" },
       ],
+      initializationOptions: lspInitializationOptions(),
+      synchronize: {
+        configurationSection: "simplicityhl",
+      },
     };
 
     this.client = new LanguageClient(
@@ -60,6 +96,7 @@ export class LspClient {
       statusBar.update("connected");
       window.showInformationMessage("SimplicityHL Language Server activated!");
     } catch (e) {
+      this.client = undefined;
       statusBar.update("error");
       window.showErrorMessage(
         `Failed to start SimplicityHL Language Server: ${e}`,

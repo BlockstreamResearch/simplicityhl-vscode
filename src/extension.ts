@@ -1,19 +1,20 @@
 // SimplicityHL VSCode Extension entry point.
 // Initializes LSP client and registers all extension features.
 
+import { ExtensionContext } from "vscode";
+
 import { LspClient } from "./client";
 import { registerRestartCommand } from "./commands";
-import { registerCompileCommands } from "./compile_commands";
-import { registerTaskProvider } from "./tasks";
 import { disposeCompiler } from "./compile";
+import { registerCompileCommands } from "./compile_commands";
 import { disposeStatusBar } from "./statusBar";
-import { ExtensionContext } from "vscode";
+import { registerTaskProvider } from "./tasks";
 
 let client: LspClient;
 
-export function activate(context: ExtensionContext) {
+export function activate(context: ExtensionContext): void {
   // Initialize LSP client for language intelligence (also shows status bar)
-  client = new LspClient();
+  client = new LspClient(context);
   void client.start();
 
   // Register all commands and providers
@@ -22,13 +23,11 @@ export function activate(context: ExtensionContext) {
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
 }
 
-export function deactivate(): Thenable<void> | undefined {
-  // Clean up all resources
+export async function deactivate(): Promise<void> {
   disposeCompiler();
-  disposeStatusBar();
-
-  if (!client) {
-    return undefined;
+  try {
+    await client?.stop();
+  } finally {
+    disposeStatusBar();
   }
-  return client.stop();
 }
