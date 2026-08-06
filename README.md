@@ -11,28 +11,19 @@ SimplicityHL is a high-level language for writing Simplicity smart contracts. Si
 - Syntax highlighting and snippets for `.simf` and `.wit` files
 - Compiler diagnostics, completion, hover, signature help, symbols, references, and go to definition
 - Opt-in imports and enums support in the language server and direct compiler commands
+- Formatting of SimplicityHL code using default VSCode bindings
 
-The extension installs or connects to the [SimplicityHL language server](https://github.com/BlockstreamResearch/simplicityhl-lsp), which provides language intelligence:
-
-## Formatting
-
-This extension provides the native **Format Document** command and **SimplicityHL: Format Current File**. The document is saved first, then the formatter receives its absolute path and formats the file in place. Formatter errors appear in the Output panel and VS Code notifications; language diagnostics remain owned by the language server.
-
-Install `simfmt` separately and make it available on `PATH`, or configure its full path:
-
-```json
-{
-  "simplicityhl.formatter.path": "/path/to/simfmt"
-}
-```
-
-Project formatting options are read from `simfmt.toml` or `.simfmt.toml` in the document directory or one of its parents.
+The extension installs or connects to the [SimplicityHL language server](https://github.com/BlockstreamResearch/simplicityhl-lsp), which provides language intelligence. 
+To provide concise and clear code you can also use the [simfmt](https://github.com/BlockstreamResearch/simfmt) formatter.
 
 - Error diagnostics
-![diagnostics](https://github.com/user-attachments/assets/54315645-464b-40c3-bb72-c6e8c4bc0ad5)
+![diagnostics](assets/error_diagnostic.gif)
 
 - Completion of user-defined functions, imported items, built-ins, and jets
-![completion](https://github.com/user-attachments/assets/bbc2b9de-c286-4d31-b47e-ac95885f8916)
+![completion](assets/completion.gif)
+
+- Formatting of SimplicityHL code
+![formatting](assets/formatting.gif)
 
 ## Experimental features
 

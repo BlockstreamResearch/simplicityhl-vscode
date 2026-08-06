@@ -5,7 +5,12 @@ import { env, ProgressLocation, Uri, window, workspace } from "vscode";
 import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
 import { findExecutable } from "../find_executable";
 
-async function installServer(command: string) {
+interface EnsureExecutableOptions {
+  displayName: string;
+  disableAutoupdateSetting: string;
+}
+
+async function installExecutable(command: string) {
   const cargoPath = findExecutable("cargo");
   if (!cargoPath) {
     throw new Error("Unable to find 'cargo'. Please ensure Rust is installed and in your PATH.");
@@ -83,6 +88,10 @@ async function installServer(command: string) {
 
 export async function ensureExecutable(
   command: string,
+  options: EnsureExecutableOptions = {
+    displayName: "SimplicityHL language server",
+    disableAutoupdateSetting: SETTINGS.disableAutoupdate.key,
+  },
 ): Promise<string | null> {
   const cargoPath = findExecutable("cargo");
   const config = workspace.getConfiguration(CONFIGURATION_SECTION);
@@ -99,7 +108,7 @@ export async function ensureExecutable(
     }
 
     const choice = await window.showWarningMessage(
-      `To use SimplicityHL language server, please install cargo`,
+      `To use ${options.displayName}, please install cargo`,
       "Learn more",
       "Don't show again",
     );
@@ -123,7 +132,7 @@ export async function ensureExecutable(
   }
 
   const disableAutoupdate = config.get<boolean>(
-    SETTINGS.disableAutoupdate.key,
+    options.disableAutoupdateSetting,
     SETTINGS.disableAutoupdate.default,
   );
 
@@ -132,7 +141,7 @@ export async function ensureExecutable(
   }
 
   try {
-    await installServer(command);
+    await installExecutable(command);
 
     serverPath = findExecutable(command);
   } catch (err) {

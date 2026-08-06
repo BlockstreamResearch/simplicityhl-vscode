@@ -5,7 +5,7 @@ import * as cp from "child_process";
 import * as path from "path";
 import * as vscode from "vscode";
 import { getActiveSimplicityHLDocument } from "./document";
-import { findExecutable } from "./find_executable";
+import { ensureExecutable } from "./lsp/install";
 
 const FORMATTER_ARGS = ["--color", "never"];
 // Parses "error: ..." message from the stderr.
@@ -25,11 +25,16 @@ interface FormatterDiagnostic {
   column: number;
 }
 
-// Saves the active editor so simfmt always receives a real file path.
+function autoSaveBeforeFormat(): boolean {
+  const config = vscode.workspace.getConfiguration("simplicityhl");
+  return config.get<boolean>("formatter.autoSaveBeforeFormat", true);
+}
+
+// Gets the active editor and auto-saves it when configured.
 async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefined> {
   return getActiveSimplicityHLDocument({
     action: "format",
-    saveBeforeAction: true,
+    saveBeforeAction: autoSaveBeforeFormat(),
     requireFilePath: true,
     failIfSaveFails: true,
   });
@@ -87,13 +92,13 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
       return this.fail("Save the SimplicityHL document before formatting it.");
     }
 
-    if (document.isDirty && !(await document.save())) {
+    if (document.isDirty && (!autoSaveBeforeFormat() || !(await document.save()))) {
       return this.fail("Save the SimplicityHL document before formatting it.");
     }
 
     let formatterPath: string;
     try {
-      formatterPath = getSimfmtPath();
+      formatterPath = await getSimfmtPath();
     } catch (error) {
       return this.fail(getErrorMessage(error));
     }
@@ -229,14 +234,17 @@ function getErrorMessage(error: unknown): string {
 }
 
 // Locate the simfmt binary using an explicit user setting before PATH discovery.
-export function getSimfmtPath(): string {
+export async function getSimfmtPath(): Promise<string> {
   const config = vscode.workspace.getConfiguration("simplicityhl");
   const configuredPath = config.get<string>("formatter.path");
   if (configuredPath?.trim()) {
     return configuredPath.trim();
   }
 
-  const formatterPath = findExecutable("simfmt");
+  const formatterPath = await ensureExecutable("simfmt", {
+    displayName: "SimplicityHL formatter",
+    disableAutoupdateSetting: "formatter.disableAutoupdate",
+  });
   if (formatterPath) {
     return formatterPath;
   }

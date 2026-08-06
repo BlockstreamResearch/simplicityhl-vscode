@@ -101,6 +101,16 @@
             "scope": "machine-overridable",
             "description": "Path to the simfmt formatter. If empty, searches PATH and common locations."
           },
+          "simplicityhl.formatter.autoSaveBeforeFormat": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically save the file before formatting."
+          },
+          "simplicityhl.formatter.disableAutoupdate": {
+            "type": "boolean",
+            "default": true,
+            "description": "Do not autoupdate simfmt formatter."
+          },
           "simplicityhl.build.autoSaveBeforeCompile": {
             "type": "boolean",
             "default": true,
