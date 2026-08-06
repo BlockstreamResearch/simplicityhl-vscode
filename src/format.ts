@@ -60,10 +60,12 @@ export function registerFormattingCommands(context: vscode.ExtensionContext): vo
 class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vscode.Disposable {
   private readonly outputChannel = vscode.window.createOutputChannel("SimplicityHL Formatter");
 
+  // Releases the formatter output channel when the extension is deactivated.
   public dispose(): void {
     this.outputChannel.dispose();
   }
 
+  // Handles VS Code's native Format Document request for SimplicityHL files.
   public async provideDocumentFormattingEdits(
     document: vscode.TextDocument,
     _options: vscode.FormattingOptions,
@@ -77,6 +79,7 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
     return result.success ? [] : undefined;
   }
 
+  // Saves, validates, and formats a single SimplicityHL document.
   public async formatDocument(document: vscode.TextDocument): Promise<FormatResult> {
     this.outputChannel.clear();
 
@@ -104,7 +107,6 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
     const result = await this.runFormatter(formatterPath, args, path.dirname(filePath));
     if (result.success) {
       this.outputChannel.appendLine(`Formatting successful: ${filePath}`);
-      void vscode.window.showInformationMessage("SimplicityHL formatted successfully!");
       return result;
     }
 
@@ -116,6 +118,7 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
     return result;
   }
 
+  // Runs simfmt and captures its combined stdout/stderr output.
   private async runFormatter(
     formatterPath: string,
     args: string[],
@@ -166,9 +169,11 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
     });
   }
 
+  // Reports a pre-run formatting failure to the user and output channel.
   private fail(message: string): FormatResult {
-    this.outputChannel.appendLine(`Formatting failed: ${message}`);
-    void vscode.window.showErrorMessage(`SimplicityHL formatting failed: ${message}`);
+    this.outputChannel.appendLine(`Formatting failed: "${message}".`);
+    void vscode.window.showErrorMessage(`Formatting failed: "${message}". See the SimplicityHL Formatter output for details.`);
+
     return { success: false, output: message };
   }
 }
@@ -196,32 +201,29 @@ export function parseFormatterDiagnostics(output: string): FormatterDiagnostic[]
   });
 }
 
+// Builds a copyable command string for the formatter output channel.
 function formatCommand(command: string, args: string[]): string {
   return [command, ...args]
     .map((argument) => (/\s/.test(argument) ? JSON.stringify(argument) : argument))
     .join(" ");
 }
 
+// Returns the first formatter output line as a compact fallback message.
 function getFailureMessage(output: string): string {
   const lines = output.trim().split(/\r?\n/);
   return lines[0] || "simfmt failed without reporting an error.";
 }
 
+// Forms the notification text based on whether simfmt reported diagnostics after its execution.
 function getFailureNotification(diagnostics: FormatterDiagnostic[], output: string): string {
   if (diagnostics.length === 0) {
-    return `SimplicityHL formatting failed: ${getFailureMessage(output)}`;
+    return `Formatting failed: "${getFailureMessage(output)}".`;
+  }else {
+    return `Formatting failed. See the SimplicityHL Formatter output for details.`;
   }
-
-  const messages = diagnostics
-    .map((diagnostic) => {
-      const fileName = path.basename(diagnostic.filePath);
-      return `${fileName}:${diagnostic.line}:${diagnostic.column} ${diagnostic.message}`;
-    })
-    .join("\n");
-
-  return `SimplicityHL formatting failed:\n${messages}`;
 }
 
+// Normalizes thrown values into user-readable strings.
 function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }

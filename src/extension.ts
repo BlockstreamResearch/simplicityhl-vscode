@@ -33,7 +33,7 @@ export function activate(context: ExtensionContext): void {
     return compiler;
   });
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
-  registerFormattingCommands(context);
+  registerFormattingCommands(context); // Formatting commands (Default format bindings)
 }
 
 export async function deactivate(): Promise<void> {
