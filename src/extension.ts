@@ -7,7 +7,6 @@ import { LspClient } from "./lsp/client";
 import { registerRestartCommand } from "./commands";
 import { SimplicityHLCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";
-import { disposeStatusBar } from "./lsp/status";
 import { registerTaskProvider } from "./tasks/provider";
 
 let client: LspClient;
@@ -32,9 +31,5 @@ export async function deactivate(): Promise<void> {
   const activeCompiler = compiler;
   compiler = undefined;
   activeCompiler?.dispose();
-  try {
-    await client?.stop();
-  } finally {
-    disposeStatusBar();
-  }
+  await client?.shutdown();
 }

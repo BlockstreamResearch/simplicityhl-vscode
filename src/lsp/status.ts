@@ -75,18 +75,3 @@ export class StatusBar {
     this.statusBarItem.dispose();
   }
 }
-
-// Singleton instance
-let statusBar: StatusBar | undefined;
-
-export function getStatusBar(): StatusBar {
-  if (!statusBar) {
-    statusBar = new StatusBar();
-  }
-  return statusBar;
-}
-
-export function disposeStatusBar(): void {
-  statusBar?.dispose();
-  statusBar = undefined;
-}

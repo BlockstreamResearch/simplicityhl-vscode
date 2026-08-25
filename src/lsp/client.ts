@@ -23,12 +23,13 @@ import {
 } from "../contracts";
 import { getExperimentalFeatures } from "../settings";
 import { ensureExecutable } from "./install";
-import { getStatusBar } from "./status";
+import { StatusBar } from "./status";
 
 export class LspClient {
   private client: LanguageClient | undefined;
   private lifecycle: Promise<void> = Promise.resolve();
   private lifecycleRequest = 0;
+  private readonly statusBar = new StatusBar();
 
   public constructor(context: ExtensionContext) {
     context.subscriptions.push(
@@ -56,7 +57,7 @@ export class LspClient {
     if (!this.isCurrent(request) || this.client) {
       return;
     }
-    const statusBar = getStatusBar();
+    const statusBar = this.statusBar;
     statusBar.update("starting");
     statusBar.show();
 
@@ -144,7 +145,7 @@ export class LspClient {
       if (this.client === client) {
         this.client = undefined;
       }
-      getStatusBar().update("disconnected");
+      this.statusBar.update("disconnected");
     }
   }
 
@@ -157,7 +158,7 @@ export class LspClient {
     if (!this.isCurrent(request)) {
       return;
     }
-    const statusBar = getStatusBar();
+    const statusBar = this.statusBar;
 
     if (!this.client) {
       // Try to start even if not previously initialized
@@ -192,5 +193,13 @@ export class LspClient {
     const result = this.lifecycle.then(operation, operation);
     this.lifecycle = result.catch(() => undefined);
     return result;
+  }
+
+  public async shutdown(): Promise<void> {
+    try {
+      await this.stop();
+    } finally {
+      this.statusBar.dispose();
+    }
   }
 }
