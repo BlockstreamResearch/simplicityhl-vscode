@@ -27,6 +27,8 @@ import { getStatusBar } from "./status";
 
 export class LspClient {
   private client: LanguageClient | undefined;
+  private lifecycle: Promise<void> = Promise.resolve();
+  private lifecycleRequest = 0;
 
   public constructor(context: ExtensionContext) {
     context.subscriptions.push(
@@ -45,7 +47,15 @@ export class LspClient {
     );
   }
 
-  public async start(): Promise<void> {
+  public start(): Promise<void> {
+    const request = ++this.lifecycleRequest;
+    return this.serialize(() => this.startNow(request));
+  }
+
+  private async startNow(request: number): Promise<void> {
+    if (!this.isCurrent(request) || this.client) {
+      return;
+    }
     const statusBar = getStatusBar();
     statusBar.update("starting");
     statusBar.show();
@@ -68,6 +78,9 @@ export class LspClient {
       execPath = await ensureExecutable(SERVER_BINARY);
     }
 
+    if (!this.isCurrent(request)) {
+      return;
+    }
     if (!execPath) {
       statusBar.update("disconnected");
       return;
@@ -97,10 +110,17 @@ export class LspClient {
 
     try {
       await this.client.start();
+      if (!this.isCurrent(request)) {
+        await this.stopNow();
+        return;
+      }
       statusBar.update("connected");
       window.showInformationMessage("SimplicityHL Language Server activated!");
     } catch (e) {
       this.client = undefined;
+      if (!this.isCurrent(request)) {
+        return;
+      }
       statusBar.update("error");
       window.showErrorMessage(
         `Failed to start SimplicityHL Language Server: ${e}`,
@@ -108,32 +128,69 @@ export class LspClient {
     }
   }
 
-  public async stop(): Promise<void> {
-    if (!this.client) {
-      return;
-    }
-    await this.client.stop();
-    this.client = undefined;
-    getStatusBar().update("disconnected");
+  public stop(): Promise<void> {
+    ++this.lifecycleRequest;
+    return this.serialize(() => this.stopNow());
   }
 
-  public async restart(): Promise<void> {
+  private async stopNow(): Promise<void> {
+    const client = this.client;
+    if (!client) {
+      return;
+    }
+    try {
+      await client.stop();
+    } finally {
+      if (this.client === client) {
+        this.client = undefined;
+      }
+      getStatusBar().update("disconnected");
+    }
+  }
+
+  public restart(): Promise<void> {
+    const request = ++this.lifecycleRequest;
+    return this.serialize(() => this.restartNow(request));
+  }
+
+  private async restartNow(request: number): Promise<void> {
+    if (!this.isCurrent(request)) {
+      return;
+    }
     const statusBar = getStatusBar();
 
     if (!this.client) {
       // Try to start even if not previously initialized
-      await this.start();
+      await this.startNow(request);
       return;
     }
 
     try {
       statusBar.update("starting");
-      await this.stop();
-      await this.start();
-      window.showInformationMessage("SimplicityHL Language Server restarted successfully!");
+      await this.stopNow();
+      if (!this.isCurrent(request)) {
+        return;
+      }
+      await this.startNow(request);
+      if (this.isCurrent(request) && this.client) {
+        window.showInformationMessage("SimplicityHL Language Server restarted successfully!");
+      }
     } catch (e) {
+      if (!this.isCurrent(request)) {
+        return;
+      }
       statusBar.update("error");
       window.showErrorMessage(`Failed to restart LSP: ${e}`);
     }
+  }
+
+  private isCurrent(request: number): boolean {
+    return request === this.lifecycleRequest;
+  }
+
+  private serialize(operation: () => Promise<void>): Promise<void> {
+    const result = this.lifecycle.then(operation, operation);
+    this.lifecycle = result.catch(() => undefined);
+    return result;
   }
 }
