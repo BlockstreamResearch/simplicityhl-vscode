@@ -21,8 +21,8 @@ import {
   SETTINGS,
   languageClientOptions,
 } from "../contracts";
-import { ensureExecutable } from "../find_server";
 import { getExperimentalFeatures } from "../settings";
+import { ensureExecutable } from "./install";
 import { getStatusBar } from "./status";
 
 export class LspClient {

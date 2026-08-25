@@ -1,7 +1,9 @@
 import * as cp from "node:child_process";
 
 import { env, ProgressLocation, Uri, window, workspace } from "vscode";
-import { findExecutable } from "./find_executable";
+
+import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
+import { findExecutable } from "../find_executable";
 
 async function installServer(command: string) {
   const cargoPath = findExecutable("cargo");
@@ -83,14 +85,14 @@ export async function ensureExecutable(
   command: string,
 ): Promise<string | null> {
   const cargoPath = findExecutable("cargo");
-  const config = workspace.getConfiguration("simplicityhl");
+  const config = workspace.getConfiguration(CONFIGURATION_SECTION);
 
   let serverPath = findExecutable(command);
 
   if (!cargoPath && !serverPath) {
     const suppressWarning = config.get<boolean>(
-      "suppressMissingLspWarning",
-      false,
+      SETTINGS.suppressMissingLspWarning.key,
+      SETTINGS.suppressMissingLspWarning.default,
     );
     if (suppressWarning) {
       return null;
@@ -106,8 +108,11 @@ export async function ensureExecutable(
       const url = "https://rust-lang.org/tools/install";
       await env.openExternal(Uri.parse(url));
     } else if (choice === "Don't show again") {
-      const config = workspace.getConfiguration("simplicityhl");
-      await config.update("suppressMissingLspWarning", true, true);
+      await config.update(
+        SETTINGS.suppressMissingLspWarning.key,
+        true,
+        true,
+      );
     }
 
     return null;
@@ -117,7 +122,10 @@ export async function ensureExecutable(
     return serverPath;
   }
 
-  const disableAutoupdate = config.get<boolean>("disableAutoupdate", false);
+  const disableAutoupdate = config.get<boolean>(
+    SETTINGS.disableAutoupdate.key,
+    SETTINGS.disableAutoupdate.default,
+  );
 
   if (serverPath && disableAutoupdate) {
     return serverPath;
