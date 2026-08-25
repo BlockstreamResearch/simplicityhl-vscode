@@ -23,7 +23,7 @@ import {
 } from "./contracts";
 import { ensureExecutable } from "./find_server";
 import { getExperimentalFeatures } from "./settings";
-import { getStatusBar } from "./statusBar";
+import { getStatusBar } from "./lsp/status";
 
 export class LspClient {
   private client: LanguageClient | undefined;
