@@ -9,30 +9,36 @@ import { registerCompileCommands } from "./commands/compile";
 import { COMMAND_IDS } from "./contracts";
 import { registerTaskProvider } from "./tasks/provider";
 
-let client: LspClient;
+let client: LspClient | undefined;
 let compiler: SimplicityHLCompiler | undefined;
 
 export function activate(context: ExtensionContext): void {
   // Initialize LSP client for language intelligence (also shows status bar)
-  client = new LspClient(context);
-  void client.start();
+  const lspClient = new LspClient(context);
+  client = lspClient;
+  void lspClient.start();
 
   // Register all commands and providers
   context.subscriptions.push(commands.registerCommand(
     COMMAND_IDS.restartServer,
-    () => client.restart(),
+    () => lspClient.restart(),
   ));
   // Compile commands (Cmd+Shift+B, etc.)
   registerCompileCommands(context, () => {
-    compiler ??= new SimplicityHLCompiler();
+    if (!compiler) {
+      compiler = new SimplicityHLCompiler();
+      context.subscriptions.push(compiler);
+    }
     return compiler;
   });
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
 }
 
 export async function deactivate(): Promise<void> {
+  const activeClient = client;
   const activeCompiler = compiler;
+  client = undefined;
   compiler = undefined;
   activeCompiler?.dispose();
-  await client?.shutdown();
+  await activeClient?.shutdown();
 }
