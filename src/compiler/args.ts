@@ -1,4 +1,4 @@
-import type { ExperimentalFeatures } from "../contracts";
+import type { ExperimentalFeatures, TaskCommand } from "../contracts";
 
 export interface CompileOptions {
   debug?: boolean;
@@ -35,4 +35,22 @@ export function compilerArguments(
     args.push("--json");
   }
   return args;
+}
+
+export function taskCompilerArguments(
+  command: TaskCommand,
+  file: string,
+  witnessFile: string | undefined,
+  features: ExperimentalFeatures,
+): string[] {
+  switch (command) {
+    case "compile":
+      return compilerArguments(file, features);
+    case "compile-debug":
+      return compilerArguments(file, features, { debug: true });
+    case "compile-with-witness":
+      return compilerArguments(file, features, {
+        witnessFile: witnessFile || "${file/.simf/.wit/}",
+      });
+  }
 }
