@@ -8,7 +8,7 @@ import { registerRestartCommand } from "./commands";
 import { disposeCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";
 import { disposeStatusBar } from "./statusBar";
-import { registerTaskProvider } from "./tasks";
+import { registerTaskProvider } from "./tasks/provider";
 
 let client: LspClient;
 

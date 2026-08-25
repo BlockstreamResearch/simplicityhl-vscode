@@ -2,9 +2,9 @@
 // Integrates with VSCode's "Tasks: Run Task" command for build automation.
 
 import * as vscode from "vscode";
-import { getSimcPath } from "./compiler";
-import { compilerFeatureArguments } from "./compiler/args";
-import { getExperimentalFeatures } from "./settings";
+import { getSimcPath } from "../compiler";
+import { compilerFeatureArguments } from "../compiler/args";
+import { getExperimentalFeatures } from "../settings";
 
 // Task definition schema - matches taskDefinitions in package.json
 export interface SimplicityHLTaskDefinition extends vscode.TaskDefinition {
