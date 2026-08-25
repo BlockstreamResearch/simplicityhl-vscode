@@ -2,6 +2,7 @@
 // Manages connection lifecycle and integrates with status bar.
 
 import * as fs from "node:fs";
+import * as path from "node:path";
 import process from "node:process";
 import {
   ExtensionContext,
@@ -24,6 +25,21 @@ import {
 import { getExperimentalFeatures } from "../settings";
 import { ensureExecutable } from "./install";
 import { StatusBar } from "./status";
+
+function workspaceWorkingDirectory(): string | undefined {
+  const folder = workspace.workspaceFolders?.[0];
+  if (folder?.uri.scheme !== "file") {
+    return undefined;
+  }
+
+  try {
+    return fs.statSync(folder.uri.fsPath).isDirectory()
+      ? folder.uri.fsPath
+      : undefined;
+  } catch {
+    return undefined;
+  }
+}
 
 export class LspClient {
   private client: LanguageClient | undefined;
@@ -67,14 +83,15 @@ export class LspClient {
       .trim();
     let execPath: string | null;
     if (configuredPath) {
-      if (!fs.existsSync(configuredPath)) {
+      const resolvedPath = path.resolve(configuredPath);
+      if (!fs.existsSync(resolvedPath)) {
         statusBar.update("error");
         window.showErrorMessage(
           `Configured SimplicityHL language server does not exist: ${configuredPath}`,
         );
         return;
       }
-      execPath = configuredPath;
+      execPath = resolvedPath;
     } else {
       execPath = await ensureExecutable(SERVER_BINARY);
     }
@@ -90,6 +107,7 @@ export class LspClient {
     const run: Executable = {
       command: execPath,
       options: {
+        cwd: workspaceWorkingDirectory(),
         env: {
           ...process.env,
         },
