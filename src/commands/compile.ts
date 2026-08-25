@@ -2,8 +2,15 @@
 // Registers commands accessible via Command Palette and keybindings.
 
 import * as vscode from "vscode";
-import * as path from "path";
-import { getCompiler } from "./compile";
+import * as path from "node:path";
+import type { CompileResult, SimplicityHLCompiler } from "../compiler";
+import type { CompileOptions } from "../compiler/args";
+import {
+  COMMAND_IDS,
+  CONFIGURATION_SECTION,
+  LANGUAGE_IDS,
+  SETTINGS,
+} from "../contracts";
 
 function showCompilationFailed(): void {
   vscode.window.showErrorMessage(
@@ -20,14 +27,17 @@ async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefine
   }
 
   const document = editor.document;
-  if (document.languageId !== "simplicityhl") {
+  if (document.languageId !== LANGUAGE_IDS.source) {
     vscode.window.showWarningMessage("Current file is not a SimplicityHL file (.simf)");
     return undefined;
   }
 
   // Auto-save before compile if enabled
-  const config = vscode.workspace.getConfiguration("simplicityhl");
-  const autoSave = config.get<boolean>("build.autoSaveBeforeCompile", true);
+  const config = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
+  const autoSave = config.get<boolean>(
+    SETTINGS.autoSaveBeforeCompile.key,
+    SETTINGS.autoSaveBeforeCompile.default,
+  );
   if (autoSave && document.isDirty) {
     const saved = await document.save();
     if (!saved) {
@@ -41,17 +51,24 @@ async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefine
   return document;
 }
 
-// Register all compile-related commands
-export function registerCompileCommands(context: vscode.ExtensionContext): void {
-  // Basic compile - compiles the current .simf file
-  const compileFileCommand = vscode.commands.registerCommand(
-    "simplicityhl.compileFile",
-    async () => {
-      const document = await getSimplicityHLDocument();
-      if (!document) return;
+async function compileActiveDocument(
+  compiler: () => SimplicityHLCompiler,
+  options: CompileOptions = {},
+): Promise<CompileResult | undefined> {
+  const document = await getSimplicityHLDocument();
+  return document && compiler().compileFile(document.uri.fsPath, options);
+}
 
-      const compiler = getCompiler();
-      const result = await compiler.compileFile(document.uri.fsPath);
+// Register all compile-related commands
+export function registerCompileCommands(
+  context: vscode.ExtensionContext,
+  compiler: () => SimplicityHLCompiler,
+): void {
+  const compileFileCommand = vscode.commands.registerCommand(
+    COMMAND_IDS.compileFile,
+    async () => {
+      const result = await compileActiveDocument(compiler);
+      if (!result) return;
 
       if (result.success) {
         // Offer to copy output to clipboard
@@ -71,15 +88,11 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
     }
   );
 
-  // Compile with debug symbols - includes debug info in output
   const compileDebugCommand = vscode.commands.registerCommand(
-    "simplicityhl.compileFileDebug",
+    COMMAND_IDS.compileFileDebug,
     async () => {
-      const document = await getSimplicityHLDocument();
-      if (!document) return;
-
-      const compiler = getCompiler();
-      const result = await compiler.compileFile(document.uri.fsPath, { debug: true });
+      const result = await compileActiveDocument(compiler, { debug: true });
+      if (!result) return;
 
       if (result.success) {
         vscode.window.showInformationMessage("Compiled with debug symbols!");
@@ -89,9 +102,8 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
     }
   );
 
-  // Compile with witness - satisfies the program with witness data
   const compileWithWitnessCommand = vscode.commands.registerCommand(
-    "simplicityhl.compileWithWitness",
+    COMMAND_IDS.compileWithWitness,
     async () => {
       const document = await getSimplicityHLDocument();
       if (!document) return;
@@ -125,8 +137,7 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
         return;
       }
 
-      const compiler = getCompiler();
-      const result = await compiler.compileFile(simfPath, { witnessFile });
+      const result = await compiler().compileFile(simfPath, { witnessFile });
 
       if (result.success) {
         const action = await vscode.window.showInformationMessage(
@@ -149,15 +160,11 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
     }
   );
 
-  // Compile to JSON - outputs result in JSON format in a new editor
   const compileJsonCommand = vscode.commands.registerCommand(
-    "simplicityhl.compileJson",
+    COMMAND_IDS.compileJson,
     async () => {
-      const document = await getSimplicityHLDocument();
-      if (!document) return;
-
-      const compiler = getCompiler();
-      const result = await compiler.compileFile(document.uri.fsPath, { json: true });
+      const result = await compileActiveDocument(compiler, { json: true });
+      if (!result) return;
 
       if (result.success && result.program) {
         // Show JSON output in a new untitled document
@@ -184,6 +191,6 @@ export function registerCompileCommands(context: vscode.ExtensionContext): void 
     compileFileCommand,
     compileDebugCommand,
     compileWithWitnessCommand,
-    compileJsonCommand
+    compileJsonCommand,
   );
 }

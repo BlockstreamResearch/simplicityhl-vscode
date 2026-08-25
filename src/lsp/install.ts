@@ -1,59 +1,9 @@
-import * as os from "os";
-import * as fs from "fs";
-import * as path from "path";
-
-import process from "node:process";
-import * as cp from "child_process";
+import * as cp from "node:child_process";
 
 import { env, ProgressLocation, Uri, window, workspace } from "vscode";
 
-// Searches for an executable in PATH and common installation directories.
-// Used by both LSP client and compiler to locate binaries (simplicityhl-lsp, simc).
-export function findExecutable(command: string): string | null {
-  try {
-    const resolved = cp
-      .execSync(
-        process.platform === "win32" ? `where ${command}` : `which ${command}`,
-      )
-      .toString()
-      .split(/\r?\n/)[0]
-      .trim();
-    if (resolved && fs.existsSync(resolved)) {
-      return resolved;
-    }
-  } catch {
-    // Not found in PATH
-  }
-
-  const commonDirs: string[] = [];
-
-  if (process.platform === "win32") {
-    commonDirs.push(
-      path.join(
-        process.env["USERPROFILE"] ?? "C:\\Users\\Default",
-        ".cargo",
-        "bin",
-      ),
-    );
-  } else {
-    commonDirs.push(path.join(os.homedir(), ".cargo", "bin"));
-
-    commonDirs.push(
-      "/usr/local/bin",
-      "/usr/bin",
-      path.join(os.homedir(), ".local", "bin"),
-    );
-  }
-
-  for (const dir of commonDirs) {
-    const candidate = path.join(dir, command);
-    if (fs.existsSync(candidate)) {
-      return candidate;
-    }
-  }
-
-  return null;
-}
+import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
+import { findExecutable } from "../find_executable";
 
 async function installServer(command: string) {
   const cargoPath = findExecutable("cargo");
@@ -69,12 +19,28 @@ async function installServer(command: string) {
     cancellable: true
   }, async (progress, token) => {
     return new Promise<void>((resolve, reject) => {
-      const installProcess = cp.spawn(cargoPath!, ["install", "--color", "never", command]);
-
-      token.onCancellationRequested(() => {
-        installProcess.kill("SIGTERM");
-        reject(new Error("Installation canceled"));
+      const cancellation = new AbortController();
+      const installProcess = cp.spawn(
+        cargoPath,
+        ["install", "--color", "never", command],
+        { shell: false, signal: cancellation.signal },
+      );
+      let settled = false;
+      const progressCancellation = token.onCancellationRequested(() => {
+        cancellation.abort();
       });
+      const finish = (error?: Error): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        progressCancellation.dispose();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      };
 
       const reportProgress = (data: Buffer) => {
         const lines = data.toString()
@@ -91,16 +57,26 @@ async function installServer(command: string) {
       installProcess.stderr?.on('data', reportProgress);
 
       installProcess.on('close', (code) => {
+        if (cancellation.signal.aborted) {
+          finish(new Error("Installation canceled"));
+          return;
+        }
         if (code === 0) {
-          resolve();
+          finish();
         } else {
-          reject(new Error(`Installation failed with exit code ${code}`));
+          finish(new Error(`Installation failed with exit code ${code}`));
         }
       });
 
       installProcess.on('error', (err) => {
-        reject(new Error(`Failed to start cargo process: ${err.message}`));
+        if (!cancellation.signal.aborted) {
+          finish(new Error(`Failed to start cargo process: ${err.message}`));
+        }
       });
+
+      if (token.isCancellationRequested) {
+        cancellation.abort();
+      }
     });
   });
 }
@@ -109,14 +85,14 @@ export async function ensureExecutable(
   command: string,
 ): Promise<string | null> {
   const cargoPath = findExecutable("cargo");
-  const config = workspace.getConfiguration("simplicityhl");
+  const config = workspace.getConfiguration(CONFIGURATION_SECTION);
 
   let serverPath = findExecutable(command);
 
   if (!cargoPath && !serverPath) {
     const suppressWarning = config.get<boolean>(
-      "suppressMissingLspWarning",
-      false,
+      SETTINGS.suppressMissingLspWarning.key,
+      SETTINGS.suppressMissingLspWarning.default,
     );
     if (suppressWarning) {
       return null;
@@ -132,8 +108,11 @@ export async function ensureExecutable(
       const url = "https://rust-lang.org/tools/install";
       await env.openExternal(Uri.parse(url));
     } else if (choice === "Don't show again") {
-      const config = workspace.getConfiguration("simplicityhl");
-      await config.update("suppressMissingLspWarning", true, true);
+      await config.update(
+        SETTINGS.suppressMissingLspWarning.key,
+        true,
+        true,
+      );
     }
 
     return null;
@@ -143,7 +122,10 @@ export async function ensureExecutable(
     return serverPath;
   }
 
-  const disableAutoupdate = config.get<boolean>("disableAutoupdate", false);
+  const disableAutoupdate = config.get<boolean>(
+    SETTINGS.disableAutoupdate.key,
+    SETTINGS.disableAutoupdate.default,
+  );
 
   if (serverPath && disableAutoupdate) {
     return serverPath;

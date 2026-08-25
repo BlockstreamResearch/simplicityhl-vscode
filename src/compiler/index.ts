@@ -2,18 +2,13 @@
 // Wraps the `simc` binary and parses its output for VSCode integration.
 
 import * as vscode from "vscode";
-import * as cp from "child_process";
+import * as cp from "node:child_process";
 import * as path from "node:path";
-import { compilerFeatureArguments } from "./features";
-import { findExecutable } from "./find_server";
-import { getExperimentalFeatures } from "./settings";
-
-// Options for compilation
-export interface CompileOptions {
-  debug?: boolean;      // Include debug symbols (--debug flag)
-  witnessFile?: string; // Path to witness file for satisfaction
-  json?: boolean;       // Output in JSON format (--json flag)
-}
+import { compilerArguments, type CompileOptions } from "./args";
+import { parseCompilerOutput } from "./output";
+import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
+import { findExecutable } from "../find_executable";
+import { getExperimentalFeatures } from "../settings";
 
 // Result of a compilation attempt
 export interface CompileResult {
@@ -25,7 +20,9 @@ export interface CompileResult {
 
 // Main compiler class - manages simc invocations
 export class SimplicityHLCompiler {
-  private outputChannel: vscode.OutputChannel;
+  private readonly outputChannel: vscode.OutputChannel;
+  private readonly activeChildren = new Set<cp.ChildProcess>();
+  private disposed = false;
 
   constructor() {
     // Output channel shows raw compiler output
@@ -37,6 +34,9 @@ export class SimplicityHLCompiler {
     filePath: string,
     options: CompileOptions = {}
   ): Promise<CompileResult> {
+    if (this.disposed) {
+      return { success: false, error: "SimplicityHL compiler is disposed" };
+    }
     this.outputChannel.clear();
     this.outputChannel.show(true);
     let simcPath: string;
@@ -47,23 +47,11 @@ export class SimplicityHLCompiler {
       this.outputChannel.appendLine(`Unable to prepare compilation: ${message}`);
       return { success: false, error: message };
     }
-    const args: string[] = [
+    const args = compilerArguments(
       filePath,
-      ...compilerFeatureArguments(getExperimentalFeatures()),
-    ];
-
-    // Add optional witness file
-    if (options.witnessFile) {
-      args.push("-w");
-      args.push(options.witnessFile);
-    }
-    // Add optional flags
-    if (options.debug) {
-      args.push("--debug");
-    }
-    if (options.json) {
-      args.push("--json");
-    }
+      getExperimentalFeatures(),
+      options,
+    );
 
     // Show compilation info in output channel
     this.outputChannel.appendLine(`Compiling: ${filePath}`);
@@ -75,53 +63,58 @@ export class SimplicityHLCompiler {
     return new Promise((resolve) => {
       const proc = cp.spawn(simcPath, args, {
         cwd: path.dirname(filePath),
+        shell: false,
       });
+      this.activeChildren.add(proc);
 
       let stdout = "";
       let stderr = "";
+      let settled = false;
+      const finish = (result: CompileResult): void => {
+        if (!settled) {
+          settled = true;
+          resolve(result);
+        }
+      };
 
       proc.stdout?.on("data", (data) => {
         stdout += data.toString();
-        this.outputChannel.append(data.toString());
+        if (!this.disposed) {
+          this.outputChannel.append(data.toString());
+        }
       });
 
       proc.stderr?.on("data", (data) => {
         stderr += data.toString();
-        this.outputChannel.append(data.toString());
+        if (!this.disposed) {
+          this.outputChannel.append(data.toString());
+        }
       });
 
       proc.on("close", (code) => {
+        this.activeChildren.delete(proc);
+        if (settled) {
+          return;
+        }
+        if (this.disposed) {
+          finish({
+            success: false,
+            error: "Compilation canceled during extension shutdown",
+          });
+          return;
+        }
         if (code === 0) {
           this.outputChannel.appendLine("\nCompilation successful!");
+          const { program, witness } = parseCompilerOutput(stdout, Boolean(options.json));
 
-          // Parse output based on format
-          let program: string | undefined;
-          let witness: string | undefined;
-
-          if (options.json) {
-            try {
-              const output = JSON.parse(stdout);
-              program = output.program;
-              witness = output.witness;
-            } catch {
-              program = stdout;
-            }
-          } else {
-            // Text format: "Program:\n<base64>\nWitness:\n<base64>"
-            const programMatch = stdout.match(/Program:\s*\n(.+)/);
-            const witnessMatch = stdout.match(/Witness:\s*\n(.+)/);
-            program = programMatch?.[1]?.trim();
-            witness = witnessMatch?.[1]?.trim();
-          }
-
-          resolve({
+          finish({
             success: true,
             program,
             witness,
           });
         } else {
           this.outputChannel.appendLine(`\nCompilation failed with exit code ${code}`);
-          resolve({
+          finish({
             success: false,
             error: stderr || stdout,
           });
@@ -129,8 +122,10 @@ export class SimplicityHLCompiler {
       });
 
       proc.on("error", (err) => {
-        this.outputChannel.appendLine(`\nFailed to start compiler: ${err.message}`);
-        resolve({
+        if (!this.disposed) {
+          this.outputChannel.appendLine(`\nFailed to start compiler: ${err.message}`);
+        }
+        finish({
           success: false,
           error: err.message,
         });
@@ -138,8 +133,17 @@ export class SimplicityHLCompiler {
     });
   }
 
-  // Clean up resources
+  // Clean up resources and signal each compiler process owned by this instance.
   public dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    for (const child of this.activeChildren) {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+      }
+    }
     this.outputChannel.dispose();
   }
 }
@@ -148,28 +152,16 @@ function shellDisplay(argument: string): string {
   return /[\s"']/u.test(argument) ? JSON.stringify(argument) : argument;
 }
 
-// Singleton instance for extension lifetime
-let compiler: SimplicityHLCompiler | undefined;
-
-export function getCompiler(): SimplicityHLCompiler {
-  if (!compiler) {
-    compiler = new SimplicityHLCompiler();
-  }
-  return compiler;
-}
-
-export function disposeCompiler(): void {
-  compiler?.dispose();
-  compiler = undefined;
-}
-
 // Locate the simc compiler binary
 export function getSimcPath(): string {
   // Check user-configured path first
-  const config = vscode.workspace.getConfiguration("simplicityhl");
-  const configuredPath = config.get<string>("compiler.path");
-  if (configuredPath && configuredPath.trim()) {
-    return configuredPath;
+  const config = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
+  const configuredPath = config.get<string>(
+    SETTINGS.compilerPath.key,
+    SETTINGS.compilerPath.default,
+  ).trim();
+  if (configuredPath) {
+    return path.resolve(configuredPath);
   }
 
   // Search in PATH and common locations
@@ -180,6 +172,6 @@ export function getSimcPath(): string {
 
   throw new Error(
     "simc compiler not found. See https://github.com/BlockstreamResearch/SimplicityHL#installation " +
-    "or set simplicityhl.compiler.path in settings."
+    `or set ${CONFIGURATION_SECTION}.${SETTINGS.compilerPath.key} in settings.`
   );
 }

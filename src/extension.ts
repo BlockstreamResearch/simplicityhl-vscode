@@ -1,33 +1,44 @@
 // SimplicityHL VSCode Extension entry point.
 // Initializes LSP client and registers all extension features.
 
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, commands } from "vscode";
 
-import { LspClient } from "./client";
-import { registerRestartCommand } from "./commands";
-import { disposeCompiler } from "./compile";
-import { registerCompileCommands } from "./compile_commands";
-import { disposeStatusBar } from "./statusBar";
-import { registerTaskProvider } from "./tasks";
+import { LspClient } from "./lsp/client";
+import { SimplicityHLCompiler } from "./compiler";
+import { registerCompileCommands } from "./commands/compile";
+import { COMMAND_IDS } from "./contracts";
+import { registerTaskProvider } from "./tasks/provider";
 
-let client: LspClient;
+let client: LspClient | undefined;
+let compiler: SimplicityHLCompiler | undefined;
 
 export function activate(context: ExtensionContext): void {
   // Initialize LSP client for language intelligence (also shows status bar)
-  client = new LspClient(context);
-  void client.start();
+  const lspClient = new LspClient(context);
+  client = lspClient;
+  void lspClient.start();
 
   // Register all commands and providers
-  registerRestartCommand(context, client);
-  registerCompileCommands(context);  // Compile commands (Cmd+Shift+B, etc.)
+  context.subscriptions.push(commands.registerCommand(
+    COMMAND_IDS.restartServer,
+    () => lspClient.restart(),
+  ));
+  // Compile commands (Cmd+Shift+B, etc.)
+  registerCompileCommands(context, () => {
+    if (!compiler) {
+      compiler = new SimplicityHLCompiler();
+      context.subscriptions.push(compiler);
+    }
+    return compiler;
+  });
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
 }
 
 export async function deactivate(): Promise<void> {
-  disposeCompiler();
-  try {
-    await client?.stop();
-  } finally {
-    disposeStatusBar();
-  }
+  const activeClient = client;
+  const activeCompiler = compiler;
+  client = undefined;
+  compiler = undefined;
+  activeCompiler?.dispose();
+  await activeClient?.shutdown();
 }
