@@ -5,6 +5,7 @@ import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "node:path";
 import { compilerArguments, type CompileOptions } from "./compiler/args";
+import { parseCompilerOutput } from "./compiler/output";
 import { findExecutable } from "./find_server";
 import { getExperimentalFeatures } from "./settings";
 
@@ -74,26 +75,7 @@ export class SimplicityHLCompiler {
       proc.on("close", (code) => {
         if (code === 0) {
           this.outputChannel.appendLine("\nCompilation successful!");
-
-          // Parse output based on format
-          let program: string | undefined;
-          let witness: string | undefined;
-
-          if (options.json) {
-            try {
-              const output = JSON.parse(stdout);
-              program = output.program;
-              witness = output.witness;
-            } catch {
-              program = stdout;
-            }
-          } else {
-            // Text format: "Program:\n<base64>\nWitness:\n<base64>"
-            const programMatch = stdout.match(/Program:\s*\n(.+)/);
-            const witnessMatch = stdout.match(/Witness:\s*\n(.+)/);
-            program = programMatch?.[1]?.trim();
-            witness = witnessMatch?.[1]?.trim();
-          }
+          const { program, witness } = parseCompilerOutput(stdout, Boolean(options.json));
 
           resolve({
             success: true,
