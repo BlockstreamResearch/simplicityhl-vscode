@@ -151,21 +151,6 @@ function shellDisplay(argument: string): string {
   return /[\s"']/u.test(argument) ? JSON.stringify(argument) : argument;
 }
 
-// Singleton instance for extension lifetime
-let compiler: SimplicityHLCompiler | undefined;
-
-export function getCompiler(): SimplicityHLCompiler {
-  if (!compiler) {
-    compiler = new SimplicityHLCompiler();
-  }
-  return compiler;
-}
-
-export function disposeCompiler(): void {
-  compiler?.dispose();
-  compiler = undefined;
-}
-
 // Locate the simc compiler binary
 export function getSimcPath(): string {
   // Check user-configured path first
