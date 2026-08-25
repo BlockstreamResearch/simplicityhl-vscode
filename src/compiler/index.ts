@@ -6,7 +6,7 @@ import * as cp from "child_process";
 import * as path from "node:path";
 import { compilerArguments, type CompileOptions } from "./args";
 import { parseCompilerOutput } from "./output";
-import { findExecutable } from "../find_server";
+import { findExecutable } from "../find_executable";
 import { getExperimentalFeatures } from "../settings";
 
 // Result of a compilation attempt
