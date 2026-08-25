@@ -1,12 +1,12 @@
 // SimplicityHL VSCode Extension entry point.
 // Initializes LSP client and registers all extension features.
 
-import { ExtensionContext } from "vscode";
+import { ExtensionContext, commands } from "vscode";
 
 import { LspClient } from "./lsp/client";
-import { registerRestartCommand } from "./commands";
 import { SimplicityHLCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";
+import { COMMAND_IDS } from "./contracts";
 import { registerTaskProvider } from "./tasks/provider";
 
 let client: LspClient;
@@ -18,7 +18,10 @@ export function activate(context: ExtensionContext): void {
   void client.start();
 
   // Register all commands and providers
-  registerRestartCommand(context, client);
+  context.subscriptions.push(commands.registerCommand(
+    COMMAND_IDS.restartServer,
+    () => client.restart(),
+  ));
   // Compile commands (Cmd+Shift+B, etc.)
   registerCompileCommands(context, () => {
     compiler ??= new SimplicityHLCompiler();
