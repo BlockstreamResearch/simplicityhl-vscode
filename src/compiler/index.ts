@@ -6,6 +6,7 @@ import * as cp from "node:child_process";
 import * as path from "node:path";
 import { compilerArguments, type CompileOptions } from "./args";
 import { parseCompilerOutput } from "./output";
+import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
 import { findExecutable } from "../find_executable";
 import { getExperimentalFeatures } from "../settings";
 
@@ -154,10 +155,13 @@ function shellDisplay(argument: string): string {
 // Locate the simc compiler binary
 export function getSimcPath(): string {
   // Check user-configured path first
-  const config = vscode.workspace.getConfiguration("simplicityhl");
-  const configuredPath = config.get<string>("compiler.path");
-  if (configuredPath && configuredPath.trim()) {
-    return configuredPath;
+  const config = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
+  const configuredPath = config.get<string>(
+    SETTINGS.compilerPath.key,
+    SETTINGS.compilerPath.default,
+  ).trim();
+  if (configuredPath) {
+    return path.resolve(configuredPath);
   }
 
   // Search in PATH and common locations
@@ -168,6 +172,6 @@ export function getSimcPath(): string {
 
   throw new Error(
     "simc compiler not found. See https://github.com/BlockstreamResearch/SimplicityHL#installation " +
-    "or set simplicityhl.compiler.path in settings."
+    `or set ${CONFIGURATION_SECTION}.${SETTINGS.compilerPath.key} in settings.`
   );
 }
