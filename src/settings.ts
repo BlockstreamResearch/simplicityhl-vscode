@@ -1,19 +1,15 @@
 import * as vscode from "vscode";
 
-import type { ExperimentalFeatures } from "./features";
+import {
+  CONFIGURATION_SECTION,
+  SETTINGS,
+  type ExperimentalFeatures,
+} from "./contracts";
 
 export function getExperimentalFeatures(): ExperimentalFeatures {
-  const configuration = vscode.workspace.getConfiguration("simplicityhl");
+  const configuration = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
   return {
-    imports: configuration.get<boolean>("experimentalFeatures.imports", false),
-    enums: configuration.get<boolean>("experimentalFeatures.enums", false),
-  };
-}
-
-export function lspInitializationOptions(): object {
-  return {
-    simplicityhl: {
-      experimentalFeatures: getExperimentalFeatures(),
-    },
+    imports: configuration.get<boolean>(SETTINGS.imports.key, SETTINGS.imports.default),
+    enums: configuration.get<boolean>(SETTINGS.enums.key, SETTINGS.enums.default),
   };
 }

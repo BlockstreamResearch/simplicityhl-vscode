@@ -11,11 +11,18 @@ import {
 import {
   Executable,
   LanguageClient,
-  LanguageClientOptions,
   ServerOptions,
 } from "vscode-languageclient/node";
+import {
+  CONFIGURATION_SECTION,
+  LANGUAGE_CLIENT_ID,
+  LANGUAGE_CLIENT_NAME,
+  SERVER_BINARY,
+  SETTINGS,
+  languageClientOptions,
+} from "./contracts";
 import { ensureExecutable } from "./find_server";
-import { lspInitializationOptions } from "./settings";
+import { getExperimentalFeatures } from "./settings";
 import { getStatusBar } from "./statusBar";
 
 export class LspClient {
@@ -24,10 +31,14 @@ export class LspClient {
   public constructor(context: ExtensionContext) {
     context.subscriptions.push(
       workspace.onDidChangeConfiguration((event) => {
-        if (!event.affectsConfiguration("simplicityhl")) {
+        if (!event.affectsConfiguration(CONFIGURATION_SECTION)) {
           return;
         }
-        if (event.affectsConfiguration("simplicityhl.server.path")) {
+        if (
+          event.affectsConfiguration(
+            `${CONFIGURATION_SECTION}.${SETTINGS.serverPath.key}`,
+          )
+        ) {
           void this.restart();
         }
       }),
@@ -39,8 +50,10 @@ export class LspClient {
     statusBar.update("starting");
     statusBar.show();
 
-    const configuration = workspace.getConfiguration("simplicityhl");
-    const configuredPath = configuration.get<string>("server.path", "").trim();
+    const configuration = workspace.getConfiguration(CONFIGURATION_SECTION);
+    const configuredPath = configuration
+      .get<string>(SETTINGS.serverPath.key, SETTINGS.serverPath.default)
+      .trim();
     let execPath: string | null;
     if (configuredPath) {
       if (!fs.existsSync(configuredPath)) {
@@ -52,7 +65,7 @@ export class LspClient {
       }
       execPath = configuredPath;
     } else {
-      execPath = await ensureExecutable("simplicityhl-lsp");
+      execPath = await ensureExecutable(SERVER_BINARY);
     }
 
     if (!execPath) {
@@ -73,20 +86,11 @@ export class LspClient {
       debug: run,
     };
 
-    const clientOptions: LanguageClientOptions = {
-      documentSelector: [
-        { scheme: "file", language: "simplicityhl" },
-        { scheme: "file", language: "simplicityhl-witness" },
-      ],
-      initializationOptions: lspInitializationOptions(),
-      synchronize: {
-        configurationSection: "simplicityhl",
-      },
-    };
+    const clientOptions = languageClientOptions(getExperimentalFeatures());
 
     this.client = new LanguageClient(
-      "simplicityhlLspClient",
-      "SimplicityHL LSP",
+      LANGUAGE_CLIENT_ID,
+      LANGUAGE_CLIENT_NAME,
       serverOptions,
       clientOptions,
     );
