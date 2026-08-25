@@ -2,7 +2,7 @@
 // Wraps the `simc` binary and parses its output for VSCode integration.
 
 import * as vscode from "vscode";
-import * as cp from "child_process";
+import * as cp from "node:child_process";
 import * as path from "node:path";
 import { compilerArguments, type CompileOptions } from "./args";
 import { parseCompilerOutput } from "./output";
@@ -19,7 +19,9 @@ export interface CompileResult {
 
 // Main compiler class - manages simc invocations
 export class SimplicityHLCompiler {
-  private outputChannel: vscode.OutputChannel;
+  private readonly outputChannel: vscode.OutputChannel;
+  private readonly activeChildren = new Set<cp.ChildProcess>();
+  private disposed = false;
 
   constructor() {
     // Output channel shows raw compiler output
@@ -31,6 +33,9 @@ export class SimplicityHLCompiler {
     filePath: string,
     options: CompileOptions = {}
   ): Promise<CompileResult> {
+    if (this.disposed) {
+      return { success: false, error: "SimplicityHL compiler is disposed" };
+    }
     this.outputChannel.clear();
     this.outputChannel.show(true);
     let simcPath: string;
@@ -57,34 +62,58 @@ export class SimplicityHLCompiler {
     return new Promise((resolve) => {
       const proc = cp.spawn(simcPath, args, {
         cwd: path.dirname(filePath),
+        shell: false,
       });
+      this.activeChildren.add(proc);
 
       let stdout = "";
       let stderr = "";
+      let settled = false;
+      const finish = (result: CompileResult): void => {
+        if (!settled) {
+          settled = true;
+          resolve(result);
+        }
+      };
 
       proc.stdout?.on("data", (data) => {
         stdout += data.toString();
-        this.outputChannel.append(data.toString());
+        if (!this.disposed) {
+          this.outputChannel.append(data.toString());
+        }
       });
 
       proc.stderr?.on("data", (data) => {
         stderr += data.toString();
-        this.outputChannel.append(data.toString());
+        if (!this.disposed) {
+          this.outputChannel.append(data.toString());
+        }
       });
 
       proc.on("close", (code) => {
+        this.activeChildren.delete(proc);
+        if (settled) {
+          return;
+        }
+        if (this.disposed) {
+          finish({
+            success: false,
+            error: "Compilation canceled during extension shutdown",
+          });
+          return;
+        }
         if (code === 0) {
           this.outputChannel.appendLine("\nCompilation successful!");
           const { program, witness } = parseCompilerOutput(stdout, Boolean(options.json));
 
-          resolve({
+          finish({
             success: true,
             program,
             witness,
           });
         } else {
           this.outputChannel.appendLine(`\nCompilation failed with exit code ${code}`);
-          resolve({
+          finish({
             success: false,
             error: stderr || stdout,
           });
@@ -92,8 +121,10 @@ export class SimplicityHLCompiler {
       });
 
       proc.on("error", (err) => {
-        this.outputChannel.appendLine(`\nFailed to start compiler: ${err.message}`);
-        resolve({
+        if (!this.disposed) {
+          this.outputChannel.appendLine(`\nFailed to start compiler: ${err.message}`);
+        }
+        finish({
           success: false,
           error: err.message,
         });
@@ -101,8 +132,17 @@ export class SimplicityHLCompiler {
     });
   }
 
-  // Clean up resources
+  // Clean up resources and signal each compiler process owned by this instance.
   public dispose(): void {
+    if (this.disposed) {
+      return;
+    }
+    this.disposed = true;
+    for (const child of this.activeChildren) {
+      if (child.exitCode === null && child.signalCode === null) {
+        child.kill();
+      }
+    }
     this.outputChannel.dispose();
   }
 }
