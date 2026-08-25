@@ -4,16 +4,9 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "node:path";
-import { compilerFeatureArguments } from "./features";
+import { compilerArguments, type CompileOptions } from "./compiler/args";
 import { findExecutable } from "./find_server";
 import { getExperimentalFeatures } from "./settings";
-
-// Options for compilation
-export interface CompileOptions {
-  debug?: boolean;      // Include debug symbols (--debug flag)
-  witnessFile?: string; // Path to witness file for satisfaction
-  json?: boolean;       // Output in JSON format (--json flag)
-}
 
 // Result of a compilation attempt
 export interface CompileResult {
@@ -47,23 +40,11 @@ export class SimplicityHLCompiler {
       this.outputChannel.appendLine(`Unable to prepare compilation: ${message}`);
       return { success: false, error: message };
     }
-    const args: string[] = [
+    const args = compilerArguments(
       filePath,
-      ...compilerFeatureArguments(getExperimentalFeatures()),
-    ];
-
-    // Add optional witness file
-    if (options.witnessFile) {
-      args.push("-w");
-      args.push(options.witnessFile);
-    }
-    // Add optional flags
-    if (options.debug) {
-      args.push("--debug");
-    }
-    if (options.json) {
-      args.push("--json");
-    }
+      getExperimentalFeatures(),
+      options,
+    );
 
     // Show compilation info in output channel
     this.outputChannel.appendLine(`Compiling: ${filePath}`);

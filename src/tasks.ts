@@ -3,7 +3,7 @@
 
 import * as vscode from "vscode";
 import { getSimcPath } from "./compile";
-import { compilerFeatureArguments } from "./features";
+import { compilerFeatureArguments } from "./compiler/args";
 import { getExperimentalFeatures } from "./settings";
 
 // Task definition schema - matches taskDefinitions in package.json
