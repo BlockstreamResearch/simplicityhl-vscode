@@ -5,7 +5,7 @@ import { ExtensionContext } from "vscode";
 
 import { LspClient } from "./lsp/client";
 import { registerRestartCommand } from "./commands";
-import { disposeCompiler } from "./compiler";
+import { disposeCompiler, getCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";
 import { disposeStatusBar } from "./lsp/status";
 import { registerTaskProvider } from "./tasks/provider";
@@ -19,7 +19,7 @@ export function activate(context: ExtensionContext): void {
 
   // Register all commands and providers
   registerRestartCommand(context, client);
-  registerCompileCommands(context);  // Compile commands (Cmd+Shift+B, etc.)
+  registerCompileCommands(context, getCompiler);  // Compile commands (Cmd+Shift+B, etc.)
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
 }
 
