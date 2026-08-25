@@ -2,7 +2,7 @@
 // Integrates with VSCode's "Tasks: Run Task" command for build automation.
 
 import * as vscode from "vscode";
-import { getSimcPath } from "./compile";
+import { getSimcPath } from "./compiler";
 import { compilerFeatureArguments } from "./compiler/args";
 import { getExperimentalFeatures } from "./settings";
 

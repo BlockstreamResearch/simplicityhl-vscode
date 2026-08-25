@@ -5,7 +5,7 @@ import { ExtensionContext } from "vscode";
 
 import { LspClient } from "./client";
 import { registerRestartCommand } from "./commands";
-import { disposeCompiler } from "./compile";
+import { disposeCompiler } from "./compiler";
 import { registerCompileCommands } from "./compile_commands";
 import { disposeStatusBar } from "./statusBar";
 import { registerTaskProvider } from "./tasks";

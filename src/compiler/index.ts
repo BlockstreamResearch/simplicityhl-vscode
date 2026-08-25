@@ -4,10 +4,10 @@
 import * as vscode from "vscode";
 import * as cp from "child_process";
 import * as path from "node:path";
-import { compilerArguments, type CompileOptions } from "./compiler/args";
-import { parseCompilerOutput } from "./compiler/output";
-import { findExecutable } from "./find_server";
-import { getExperimentalFeatures } from "./settings";
+import { compilerArguments, type CompileOptions } from "./args";
+import { parseCompilerOutput } from "./output";
+import { findExecutable } from "../find_server";
+import { getExperimentalFeatures } from "../settings";
 
 // Result of a compilation attempt
 export interface CompileResult {
