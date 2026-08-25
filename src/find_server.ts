@@ -1,4 +1,4 @@
-import * as cp from "child_process";
+import * as cp from "node:child_process";
 
 import { env, ProgressLocation, Uri, window, workspace } from "vscode";
 import { findExecutable } from "./find_executable";
@@ -17,12 +17,28 @@ async function installServer(command: string) {
     cancellable: true
   }, async (progress, token) => {
     return new Promise<void>((resolve, reject) => {
-      const installProcess = cp.spawn(cargoPath!, ["install", "--color", "never", command]);
-
-      token.onCancellationRequested(() => {
-        installProcess.kill("SIGTERM");
-        reject(new Error("Installation canceled"));
+      const cancellation = new AbortController();
+      const installProcess = cp.spawn(
+        cargoPath,
+        ["install", "--color", "never", command],
+        { shell: false, signal: cancellation.signal },
+      );
+      let settled = false;
+      const progressCancellation = token.onCancellationRequested(() => {
+        cancellation.abort();
       });
+      const finish = (error?: Error): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        progressCancellation.dispose();
+        if (error) {
+          reject(error);
+        } else {
+          resolve();
+        }
+      };
 
       const reportProgress = (data: Buffer) => {
         const lines = data.toString()
@@ -39,16 +55,26 @@ async function installServer(command: string) {
       installProcess.stderr?.on('data', reportProgress);
 
       installProcess.on('close', (code) => {
+        if (cancellation.signal.aborted) {
+          finish(new Error("Installation canceled"));
+          return;
+        }
         if (code === 0) {
-          resolve();
+          finish();
         } else {
-          reject(new Error(`Installation failed with exit code ${code}`));
+          finish(new Error(`Installation failed with exit code ${code}`));
         }
       });
 
       installProcess.on('error', (err) => {
-        reject(new Error(`Failed to start cargo process: ${err.message}`));
+        if (!cancellation.signal.aborted) {
+          finish(new Error(`Failed to start cargo process: ${err.message}`));
+        }
       });
+
+      if (token.isCancellationRequested) {
+        cancellation.abort();
+      }
     });
   });
 }
