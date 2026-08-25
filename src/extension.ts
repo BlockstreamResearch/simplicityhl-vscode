@@ -3,7 +3,7 @@
 
 import { ExtensionContext } from "vscode";
 
-import { LspClient } from "./client";
+import { LspClient } from "./lsp/client";
 import { registerRestartCommand } from "./commands";
 import { disposeCompiler } from "./compiler";
 import { registerCompileCommands } from "./commands/compile";

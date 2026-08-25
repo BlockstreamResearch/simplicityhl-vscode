@@ -20,10 +20,10 @@ import {
   SERVER_BINARY,
   SETTINGS,
   languageClientOptions,
-} from "./contracts";
-import { ensureExecutable } from "./find_server";
-import { getExperimentalFeatures } from "./settings";
-import { getStatusBar } from "./lsp/status";
+} from "../contracts";
+import { ensureExecutable } from "../find_server";
+import { getExperimentalFeatures } from "../settings";
+import { getStatusBar } from "./status";
 
 export class LspClient {
   private client: LanguageClient | undefined;

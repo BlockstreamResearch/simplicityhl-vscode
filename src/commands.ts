@@ -1,5 +1,5 @@
 import { ExtensionContext, commands } from "vscode";
-import { LspClient } from "./client";
+import { LspClient } from "./lsp/client";
 
 export function registerRestartCommand(
   context: ExtensionContext,
