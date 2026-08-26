@@ -2,6 +2,7 @@
 
 const DIAGNOSTIC_HEADER = /^error(?:\[[^\]]+\])?:\s*(.+)$/gm;
 const DIAGNOSTIC_LOCATION = /^\s*-->\s+(.+):(\d+):(\d+)\s*$/m;
+const MAX_NOTIFICATION_LENGTH = 200;
 
 export interface FormatterDiagnostic {
   message: string;
@@ -31,10 +32,13 @@ export function parseFormatterDiagnostics(output: string): FormatterDiagnostic[]
 }
 
 export function getFailureNotification(output: string): string {
-  if (parseFormatterDiagnostics(output).length > 0) {
-    return "Formatting failed. See the SimplicityHL Formatter output for details.";
-  }
+  const message = parseFormatterDiagnostics(output)[0]?.message
+    || output.trim().split(/\r?\n/)[0]
+    || "simfmt failed without reporting an error";
+  const notification = `Formatting failed: ${message}`;
 
-  const message = output.trim().split(/\r?\n/)[0] || "simfmt failed without reporting an error";
-  return `Formatting failed: "${message}".`;
+  // Limit only the notification preview; callers retain the complete output.
+  return notification.length > MAX_NOTIFICATION_LENGTH
+    ? `${notification.slice(0, MAX_NOTIFICATION_LENGTH - 1).trimEnd()}…`
+    : notification;
 }

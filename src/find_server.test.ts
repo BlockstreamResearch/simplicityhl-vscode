@@ -44,16 +44,21 @@ function createHost() {
     installs: [] as string[],
     notifications: [] as string[],
     errors: [] as unknown[],
+    errorActions: [] as string[][],
+    errorSelection: undefined as string | Promise<string | undefined> | undefined,
     warnings: [] as string[],
     formatRuns: 0,
     formatArgs: [] as string[],
     formatOutcome: "success" as "success" | "failure" | "pending",
+    formatOutput: "error: invalid expression\n  --> /test/example.simf:2:3\n",
     onFormatSpawn: undefined as ((child: MockChild) => void) | undefined,
     cancellations: 0,
     kills: 0,
     outputChannelsCreated: 0,
     outputChannelsDisposed: 0,
+    outputChannelsShown: [] as boolean[],
     output: [] as string[],
+    activeTextEditor: { document } as Pick<vscode.TextEditor, "document"> | undefined,
     contexts: [] as vscode.ExtensionContext[],
     command: undefined as (() => Promise<void>) | undefined,
     provider: undefined as vscode.DocumentFormattingEditProvider | undefined,
@@ -89,7 +94,7 @@ const vscodeMock = {
     },
   },
   window: {
-    activeTextEditor: { document },
+    get activeTextEditor() { return host.activeTextEditor; },
     createOutputChannel: () => {
       host.outputChannelsCreated += 1;
       let disposed = false;
@@ -104,6 +109,10 @@ const vscodeMock = {
         },
         append,
         appendLine: append,
+        show(preserveFocus: boolean) {
+          assert.equal(disposed, false, "Cannot show a disposed output channel");
+          host.outputChannelsShown.push(preserveFocus);
+        },
         dispose() {
           assert.equal(disposed, false, "Output channel must only be disposed once");
           disposed = true;
@@ -111,7 +120,11 @@ const vscodeMock = {
         },
       };
     },
-    showErrorMessage: async (error: unknown) => { host.errors.push(error); },
+    showErrorMessage: (error: unknown, ...actions: string[]) => {
+      host.errors.push(error);
+      host.errorActions.push(actions);
+      return Promise.resolve(host.errorSelection);
+    },
     showWarningMessage: async (message: string) => { host.warnings.push(message); },
     withProgress: async (
       options: { title: string },
@@ -171,7 +184,7 @@ const processMock = {
       if (host.formatOutcome !== "pending") {
         queueMicrotask(() => {
           if (host.formatOutcome === "failure") {
-            child.stderr.emit("data", Buffer.from("error: invalid expression\n  --> /test/example.simf:2:3\n"));
+            child.stderr.emit("data", Buffer.from(host.formatOutput));
           }
           close(host.formatOutcome === "success" ? 0 : 1);
         });
@@ -212,6 +225,7 @@ const originalLoad = loader._load;
 let formatterModule: typeof import("./format");
 let formatterInstall: typeof import("./format/install");
 let commandsModule: typeof import("./commands/format");
+let documentModule: typeof import("./document");
 let extensionModule: typeof import("./extension");
 let serverModule: typeof import("./lsp/install");
 try {
@@ -222,6 +236,7 @@ try {
   formatterModule = loadModule("./format");
   formatterInstall = loadModule("./format/install");
   commandsModule = loadModule("./commands/format");
+  documentModule = loadModule("./document");
   extensionModule = loadModule("./extension");
   serverModule = loadModule("./lsp/install");
 } finally {
@@ -242,6 +257,131 @@ async function formatDocument(): Promise<void> {
   );
   assert.deepEqual(edits, []);
 }
+
+void test("active document selection preserves warnings and leaves preparation to the formatter", async (t) => {
+  extensionModule.activate(context());
+  host.activeTextEditor = undefined;
+  await host.command();
+
+  const save = t.mock.fn(async () => true);
+  host.activeTextEditor = { document: { ...document, languageId: "plaintext", isDirty: true, save } };
+  await host.command();
+
+  assert.deepEqual(host.warnings, [
+    "No active file to format",
+    "Current file is not a SimplicityHL file (.simf)",
+  ]);
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(host.outputChannelsCreated, 0);
+  assert.equal(host.formatRuns, 0);
+});
+
+void test("the formatting command follows the shared save policy and saves only once", async (t) => {
+  const save = t.mock.fn(async () => true);
+  host.activeTextEditor = { document: { ...document, isDirty: true, save } };
+  extensionModule.activate(context());
+
+  host.settings["formatter.autoSaveBeforeFormat"] = false;
+  await host.command();
+  assert.equal(save.mock.callCount(), 0);
+  assert.equal(host.formatRuns, 0);
+  assert.deepEqual(host.errors, ["Save the SimplicityHL document before formatting it."]);
+  assert.deepEqual(host.warnings, []);
+
+  host.settings["formatter.autoSaveBeforeFormat"] = true;
+  await host.command();
+  assert.equal(save.mock.callCount(), 1);
+  assert.equal(host.formatRuns, 1);
+  assert.equal(host.errors.length, 1);
+});
+
+void test("the formatting provider prepares its supplied document independently of the active editor", async (t) => {
+  const saveActive = t.mock.fn(async () => true);
+  const saveTarget = t.mock.fn(async () => true);
+  const target: vscode.TextDocument = {
+    ...document,
+    uri: { scheme: "file", fsPath: "/test/other.simf" } as vscode.Uri,
+    isDirty: true,
+    save: saveTarget,
+  };
+  host.settings["formatter.autoSaveBeforeFormat"] = true;
+  extensionModule.activate(context());
+
+  for (const activeTextEditor of [
+    undefined,
+    { document: { ...document, languageId: "plaintext", isDirty: true, save: saveActive } },
+  ]) {
+    host.activeTextEditor = activeTextEditor;
+    assert.deepEqual(await host.provider.provideDocumentFormattingEdits(
+      target,
+      { tabSize: 2, insertSpaces: true },
+      { isCancellationRequested: false } as vscode.CancellationToken,
+    ), []);
+    assert.equal(host.formatArgs[0], target.uri.fsPath);
+  }
+
+  assert.equal(saveTarget.mock.callCount(), 2);
+  assert.equal(saveActive.mock.callCount(), 0);
+  assert.deepEqual(host.errors, []);
+  assert.deepEqual(host.warnings, []);
+});
+
+void test("shared preparation returns validation errors without displaying notifications", async (t) => {
+  const save = t.mock.fn(async () => true);
+  const invalidDocument = { ...document, languageId: "plaintext", isDirty: true, save };
+  const options = { action: "format", saveBeforeAction: true, requireFilePath: true, requireSaved: true } as const;
+
+  assert.deepEqual(await documentModule.prepareSimplicityHLDocument(invalidDocument, options), {
+    error: "Current file is not a SimplicityHL file (.simf)",
+  });
+  assert.equal(save.mock.callCount(), 0);
+  assert.deepEqual(host.errors, []);
+  assert.deepEqual(host.warnings, []);
+
+  const formatter = new formatterModule.SimplicityHLFormatter({ shouldUpdate: async () => false });
+  context().subscriptions.push(formatter);
+  assert.deepEqual(await formatter.formatDocument(invalidDocument), {
+    success: false,
+    output: "Current file is not a SimplicityHL file (.simf)",
+  });
+  assert.deepEqual(host.errors, ["Current file is not a SimplicityHL file (.simf)"]);
+  assert.deepEqual(host.errorActions, [[]]);
+  assert.equal(host.formatRuns, 0);
+});
+
+void test("active document preparation preserves compilation save behavior", async (t) => {
+  const save = t.mock.fn(async () => false);
+  const dirtyDocument = { ...document, isDirty: true, save };
+  host.activeTextEditor = { document: dirtyDocument };
+
+  assert.equal(await documentModule.getActiveSimplicityHLDocument({
+    action: "compile", saveBeforeAction: false, failIfSaveFails: true,
+  }), dirtyDocument);
+  assert.equal(save.mock.callCount(), 0);
+
+  assert.equal(await documentModule.getActiveSimplicityHLDocument({
+    action: "compile", saveBeforeAction: true, failIfSaveFails: true,
+  }), undefined);
+  assert.deepEqual(host.warnings, ["Save the SimplicityHL document before compiling it."]);
+
+  assert.equal(await documentModule.getActiveSimplicityHLDocument({
+    action: "compile", saveBeforeAction: true, failIfSaveFails: false,
+  }), dirtyDocument);
+  assert.equal(save.mock.callCount(), 2);
+  assert.equal(host.warnings.length, 1);
+});
+
+void test("active document selection does not forward preparation-only options", async () => {
+  const dirtyDocument = { ...document, isDirty: true };
+  host.activeTextEditor = { document: dirtyDocument };
+  const options = { action: "compile", saveBeforeAction: false, requireSaved: true } as const;
+
+  assert.equal(await documentModule.getActiveSimplicityHLDocument(options), dirtyDocument);
+  assert.deepEqual(await documentModule.prepareSimplicityHLDocument(dirtyDocument, options), {
+    error: "Save the SimplicityHL document before compiling it.",
+  });
+  assert.deepEqual(host.warnings, []);
+});
 
 void test("lazily shares the formatter between entry points and persists its cache across activation", async (t) => {
   let now = 1_750_000_000_000;
@@ -306,12 +446,12 @@ void test("disabled autoupdate bypasses the cache for an installed formatter", a
   assert.deepEqual(host.installs, []);
 });
 
-void test("formatter installation uses its own disabled-autoupdate default", async (t) => {
+void test("formatter installation enables autoupdate by default", async (t) => {
   delete host.settings["formatter.disableAutoupdate"];
   const shouldUpdate = t.mock.fn(async () => true);
   assert.equal(await formatterInstall.getSimfmtPath({ shouldUpdate }), "/test/bin/simfmt");
-  assert.equal(shouldUpdate.mock.callCount(), 0);
-  assert.deepEqual(host.installs, []);
+  assert.equal(shouldUpdate.mock.callCount(), 1);
+  assert.deepEqual(host.installs, ["simfmt"]);
 });
 
 void test("missing Cargo bypasses the cache and preserves executable discovery", async (t) => {
@@ -386,7 +526,7 @@ void test("LSP callers without a cache retain their existing update behavior", a
   assert.equal(host.installs.length, 2);
 });
 
-void test("formatter failures retain their output and diagnostic notification", async () => {
+void test("formatter failures offer output without opening it when the notification is dismissed", async () => {
   host.formatOutcome = "failure";
   extensionModule.activate(context());
   const result = await host.provider.provideDocumentFormattingEdits(
@@ -395,9 +535,53 @@ void test("formatter failures retain their output and diagnostic notification", 
     { isCancellationRequested: false } as vscode.CancellationToken,
   );
   assert.equal(result, undefined);
-  assert.deepEqual(host.errors, ["Formatting failed. See the SimplicityHL Formatter output for details."]);
+  assert.deepEqual(host.errors, ["Formatting failed: invalid expression"]);
+  assert.deepEqual(host.errorActions, [["Show Output"]]);
+  assert.deepEqual(host.outputChannelsShown, []);
   assert.ok(host.output.join("\n").includes("invalid expression"));
 });
+
+void test("formatter setup failures preserve complete errors and can show their output", async (t) => {
+  const message = `Unable to prepare simfmt: ${"details ".repeat(100)}\nUnderlying error`;
+  t.mock.method(formatterInstall, "getSimfmtPath", async () => { throw new Error(message); });
+  host.errorSelection = "Show Output";
+  const formatter = new formatterModule.SimplicityHLFormatter({ shouldUpdate: async () => false });
+  context().subscriptions.push(formatter);
+
+  assert.deepEqual(await formatter.formatDocument(document), { success: false, output: message });
+  assert.ok(host.output.join("\n").includes(message));
+  assert.equal(host.errors.length, 1);
+  const notification = String(host.errors[0]);
+  assert.ok(notification.length <= 200);
+  assert.match(notification, /^Formatting failed: Unable to prepare simfmt: .*…$/);
+  assert.deepEqual(host.errorActions, [["Show Output"]]);
+  assert.deepEqual(host.outputChannelsShown, [true]);
+  assert.equal(host.formatRuns, 0);
+});
+
+for (const disposeBeforeAction of [false, true]) {
+  void test(`formatter errors return before the output action, with disposal ${disposeBeforeAction}`, async () => {
+    host.formatOutcome = "failure";
+    host.formatOutput = `error: ${"invalid expression ".repeat(100)}\n  --> /test/example.simf:2:3\n`;
+    let selectAction: (action: string) => void;
+    host.errorSelection = new Promise<string>((resolve) => { selectAction = resolve; });
+    const formatter = new formatterModule.SimplicityHLFormatter({ shouldUpdate: async () => false });
+    context().subscriptions.push(formatter);
+
+    const result = await formatter.formatDocument(document);
+    assert.equal(result.success, false);
+    assert.equal(result.output, host.formatOutput + "simfmt exited with code 1.\n");
+    assert.ok(host.output.join("\n").includes(host.formatOutput));
+    assert.match(String(host.errors[0]), /^Formatting failed: invalid expression .*…$/);
+    assert.deepEqual(host.errorActions, [["Show Output"]]);
+    assert.deepEqual(host.outputChannelsShown, []);
+
+    if (disposeBeforeAction) formatter.dispose();
+    selectAction("Show Output");
+    await host.errorSelection;
+    assert.deepEqual(host.outputChannelsShown, disposeBeforeAction ? [] : [true]);
+  });
+}
 
 void test("formatter disposal stops active children and prevents further formatting", async () => {
   host.formatOutcome = "pending";
@@ -453,7 +637,12 @@ void test("formatter preserves autosave settings for dirty documents", async (t)
   const dirtyDocument = { ...document, isDirty: true, save } as vscode.TextDocument;
 
   host.settings["formatter.autoSaveBeforeFormat"] = false;
-  assert.equal((await formatter.formatDocument(dirtyDocument)).success, false);
+  assert.deepEqual(await formatter.formatDocument(dirtyDocument), {
+    success: false,
+    output: "Save the SimplicityHL document before formatting it.",
+  });
+  assert.deepEqual(host.errors, ["Save the SimplicityHL document before formatting it."]);
+  assert.deepEqual(host.errorActions, [[]]);
   assert.equal(save.mock.callCount(), 0);
   assert.equal(host.formatRuns, 0);
 
@@ -461,4 +650,29 @@ void test("formatter preserves autosave settings for dirty documents", async (t)
   assert.equal((await formatter.formatDocument(dirtyDocument)).success, true);
   assert.equal(save.mock.callCount(), 1);
   assert.equal(host.formatRuns, 1);
+});
+
+void test("formatter uses the same save warning for missing paths and failed saves", async () => {
+  host.settings["formatter.autoSaveBeforeFormat"] = true;
+  const formatter = new formatterModule.SimplicityHLFormatter({ shouldUpdate: async () => false });
+  context().subscriptions.push(formatter);
+  const invalidDocuments = [
+    { ...document, uri: { scheme: "untitled", fsPath: "/test/example.simf" } },
+    { ...document, uri: { scheme: "file", fsPath: "" } },
+    { ...document, isDirty: true, save: async () => false },
+  ] as vscode.TextDocument[];
+
+  for (const invalidDocument of invalidDocuments) {
+    assert.deepEqual(await formatter.formatDocument(invalidDocument), {
+      success: false,
+      output: "Save the SimplicityHL document before formatting it.",
+    });
+    assert.deepEqual(host.output, ["Save the SimplicityHL document before formatting it."]);
+  }
+  assert.deepEqual(host.errors, invalidDocuments.map(() =>
+    "Save the SimplicityHL document before formatting it.",
+  ));
+  assert.deepEqual(host.errorActions, invalidDocuments.map(() => []));
+  assert.deepEqual(host.outputChannelsShown, []);
+  assert.equal(host.formatRuns, 0);
 });

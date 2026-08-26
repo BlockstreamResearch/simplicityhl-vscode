@@ -49,11 +49,11 @@ export const SETTINGS = {
   },
   autoSaveBeforeFormat: {
     key: "formatter.autoSaveBeforeFormat",
-    default: true,
+    default: false,
   },
   formatterDisableAutoupdate: {
     key: "formatter.disableAutoupdate",
-    default: true,
+    default: false,
   },
   autoSaveBeforeCompile: {
     key: "build.autoSaveBeforeCompile",

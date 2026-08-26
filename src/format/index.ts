@@ -7,10 +7,12 @@ import * as path from "node:path";
 import { getSimfmtPath } from "./install";
 import { getFailureNotification } from "./output";
 import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
+import { prepareSimplicityHLDocument } from "../document";
 import type { UpdateCache } from "../update_cache";
 
 const FORMATTER_ARGS = ["--color", "never"];
 const SHUTDOWN_MESSAGE = "Formatting canceled during extension shutdown";
+const SHOW_OUTPUT_ACTION = "Show Output";
 
 export interface FormatResult {
   success: boolean;
@@ -57,20 +59,21 @@ export class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvi
     }
     this.outputChannel.clear();
 
-    if (document.uri.scheme !== "file" || !document.uri.fsPath) {
-      return this.fail("Save the SimplicityHL document before formatting it.");
-    }
-
     const config = vscode.workspace.getConfiguration(CONFIGURATION_SECTION);
-    const autoSave = config.get<boolean>(
-      SETTINGS.autoSaveBeforeFormat.key,
-      SETTINGS.autoSaveBeforeFormat.default,
-    );
-    if (document.isDirty && (!autoSave || !(await document.save()))) {
-      return this.fail("Save the SimplicityHL document before formatting it.");
-    }
+    const prepared = await prepareSimplicityHLDocument(document, {
+      action: "format",
+      saveBeforeAction: config.get<boolean>(
+        SETTINGS.autoSaveBeforeFormat.key,
+        SETTINGS.autoSaveBeforeFormat.default,
+      ),
+      requireFilePath: true,
+      requireSaved: true,
+    });
     if (this.disposed) {
       return { success: false, output: SHUTDOWN_MESSAGE };
+    }
+    if ("error" in prepared) {
+      return this.failShort(prepared.error);
     }
 
     let formatterPath: string;
@@ -83,7 +86,7 @@ export class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvi
       return { success: false, output: SHUTDOWN_MESSAGE };
     }
 
-    const filePath = document.uri.fsPath;
+    const filePath = prepared.document.uri.fsPath;
     const args = [filePath, ...FORMATTER_ARGS];
     this.outputChannel.appendLine(`Formatting: ${filePath}`);
     this.outputChannel.appendLine(`Command: ${formatCommand(formatterPath, args)}`);
@@ -97,7 +100,7 @@ export class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvi
     }
 
     this.outputChannel.appendLine("Formatting failed. See the diagnostics above for details.");
-    void vscode.window.showErrorMessage(getFailureNotification(result.output));
+    this.showFailureNotification(result.output);
 
     return result;
   }
@@ -159,14 +162,33 @@ export class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvi
     });
   }
 
+  // Reports a self-contained validation message without additional context.
+  private failShort(message: string): FormatResult {
+    if (!this.disposed) {
+      this.outputChannel.appendLine(message);
+      void vscode.window.showErrorMessage(message);
+    }
+
+    return { success: false, output: message };
+  }
+
   // Reports a pre-run formatting failure to the user and output channel.
   private fail(message: string): FormatResult {
     if (!this.disposed) {
       this.outputChannel.appendLine(`Formatting failed: "${message}".`);
-      void vscode.window.showErrorMessage(`Formatting failed: "${message}". See the SimplicityHL Formatter output for details.`);
+      this.showFailureNotification(message);
     }
 
     return { success: false, output: message };
+  }
+
+  // Offers full details without waiting for the user to dismiss the notification.
+  private showFailureNotification(output: string): void {
+    void vscode.window.showErrorMessage(getFailureNotification(output), SHOW_OUTPUT_ACTION).then((action) => {
+      if (action === SHOW_OUTPUT_ACTION && !this.disposed) {
+        this.outputChannel.show(true);
+      }
+    });
   }
 }
 

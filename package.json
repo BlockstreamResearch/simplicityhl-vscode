@@ -103,12 +103,12 @@
           },
           "simplicityhl.formatter.autoSaveBeforeFormat": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "description": "Automatically save the file before formatting."
           },
           "simplicityhl.formatter.disableAutoupdate": {
             "type": "boolean",
-            "default": true,
+            "default": false,
             "description": "Do not autoupdate simfmt formatter."
           },
           "simplicityhl.build.autoSaveBeforeCompile": {
