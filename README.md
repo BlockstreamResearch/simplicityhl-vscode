@@ -1,10 +1,10 @@
 # SimplicityHL extension for VSCode
 
-VSCode extension that provides syntax highlighting for the [SimplicityHL](https://github.com/BlockstreamResearch/SimplicityHL) programming language.
+VSCode extension that provides syntax highlighting for the [SimplicityHL][1] programming language.
 
-[Simplicity](https://github.com/BlockstreamResearch/simplicity) is a typed, combinator-based, functional language without loops or recursion, developed to be an alternative to Bitcoin script that is formally specified, and can be statically analyzed with upper bounds on computation resources prior to execution.
+[Simplicity][2] is a typed, combinator-based, functional language without loops or recursion, developed to be an alternative to Bitcoin script that is formally specified, and can be statically analyzed with upper bounds on computation resources prior to execution.
 
-SimplicityHL is a high-level language for writing Simplicity smart contracts. SimplicityHL looks and feels like [Rust](https://www.rust-lang.org), but is compiled to Simplicity bytecode. Developers write SimplicityHL transactions, which Bitcoin/Liquid nodes verify with the Simplicity script interpreter.
+SimplicityHL is a high-level language for writing Simplicity smart contracts. SimplicityHL looks and feels like [Rust][3], but is compiled to Simplicity bytecode. Developers write SimplicityHL transactions, which Bitcoin/Liquid nodes verify with the Simplicity script interpreter.
 
 ## Features
 
@@ -13,17 +13,17 @@ SimplicityHL is a high-level language for writing Simplicity smart contracts. Si
 - Opt-in imports and enums support in the language server and direct compiler commands
 - Formatting of SimplicityHL code using default VSCode bindings
 
-The extension installs or connects to the [SimplicityHL language server](https://github.com/BlockstreamResearch/simplicityhl-lsp), which provides language intelligence. 
-To provide concise and clear code you can also use the [simfmt](https://github.com/BlockstreamResearch/simfmt) formatter.
+The extension installs or connects to the [SimplicityHL language server][4], which provides language intelligence. 
+To provide concise and clear code you can also use the [simfmt][5] formatter.
 
 - Error diagnostics
-![diagnostics](assets/error_diagnostic.gif)
+![diagnostics][6]
 
 - Completion of user-defined functions, imported items, built-ins, and jets
-![completion](assets/completion.gif)
+![completion][7]
 
 - Formatting of SimplicityHL code
-![formatting](assets/formatting.gif)
+![formatting][8]
 
 ## Experimental features
 
@@ -39,4 +39,14 @@ For local extension development, `simplicityhl.server.path` can point to a local
 
 ### Development
 
-To install the extension manually or hack on the source code see [development.md](docs/development.md)
+To install the extension manually or hack on the source code see [development.md][9]
+
+[1]: https://github.com/BlockstreamResearch/SimplicityHL
+[2]: https://github.com/BlockstreamResearch/simplicity
+[3]: https://www.rust-lang.org
+[4]: https://github.com/BlockstreamResearch/simplicityhl-lsp
+[5]: https://github.com/BlockstreamResearch/simfmt
+[6]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/error_diagnostic.gif
+[7]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/completion.gif
+[8]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/formatting.gif
+[9]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/docs/development.md
