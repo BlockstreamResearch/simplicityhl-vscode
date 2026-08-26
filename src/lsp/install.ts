@@ -1,6 +1,7 @@
 import * as cp from "node:child_process";
 
 import { env, ProgressLocation, Uri, window, workspace } from "vscode";
+import type { UpdateCache } from "../update_cache";
 
 import { CONFIGURATION_SECTION, SETTINGS } from "../contracts";
 import { findExecutable } from "../find_executable";
@@ -8,6 +9,7 @@ import { findExecutable } from "../find_executable";
 interface EnsureExecutableOptions {
   displayName: string;
   disableAutoupdateSetting: string;
+  updateCache?: UpdateCache;
 }
 
 async function installExecutable(command: string) {
@@ -141,6 +143,14 @@ export async function ensureExecutable(
   }
 
   try {
+    if (!disableAutoupdate && options.updateCache) {
+      const shouldUpdate = await options.updateCache.shouldUpdate();
+      // A cached update must never prevent installing a missing executable.
+      if (serverPath && !shouldUpdate) {
+        return serverPath;
+      }
+    }
+
     await installExecutable(command);
 
     serverPath = findExecutable(command);

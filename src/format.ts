@@ -6,6 +6,7 @@ import * as path from "path";
 import * as vscode from "vscode";
 import { getActiveSimplicityHLDocument } from "./document";
 import { ensureExecutable } from "./lsp/install";
+import { DailyUpdateCache, type UpdateCache } from "./update_cache";
 
 const FORMATTER_ARGS = ["--color", "never"];
 // Parses "error: ..." message from the stderr.
@@ -41,8 +42,11 @@ async function getSimplicityHLDocument(): Promise<vscode.TextDocument | undefine
 }
 
 // Registers the Format Current File command and the native VS Code formatter.
-export function registerFormattingCommands(context: vscode.ExtensionContext): void {
-  const formatter = new SimplicityHLFormatter();
+export function registerFormattingCommands(
+  context: vscode.ExtensionContext,
+  updateCache: UpdateCache = new DailyUpdateCache(context.globalState, "simfmt.lastUpdateAttemptAt"),
+): void {
+  const formatter = new SimplicityHLFormatter(updateCache);
 
   const formatFileCommand = vscode.commands.registerCommand(
     "simplicityhl.formatFile",
@@ -64,6 +68,8 @@ export function registerFormattingCommands(context: vscode.ExtensionContext): vo
 
 class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vscode.Disposable {
   private readonly outputChannel = vscode.window.createOutputChannel("SimplicityHL Formatter");
+
+  public constructor(private readonly updateCache: UpdateCache) {}
 
   // Releases the formatter output channel when the extension is deactivated.
   public dispose(): void {
@@ -98,7 +104,7 @@ class SimplicityHLFormatter implements vscode.DocumentFormattingEditProvider, vs
 
     let formatterPath: string;
     try {
-      formatterPath = await getSimfmtPath();
+      formatterPath = await getSimfmtPath(this.updateCache);
     } catch (error) {
       return this.fail(getErrorMessage(error));
     }
@@ -234,7 +240,7 @@ function getErrorMessage(error: unknown): string {
 }
 
 // Locate the simfmt binary using an explicit user setting before PATH discovery.
-export async function getSimfmtPath(): Promise<string> {
+export async function getSimfmtPath(updateCache: UpdateCache): Promise<string> {
   const config = vscode.workspace.getConfiguration("simplicityhl");
   const configuredPath = config.get<string>("formatter.path");
   if (configuredPath?.trim()) {
@@ -244,6 +250,7 @@ export async function getSimfmtPath(): Promise<string> {
   const formatterPath = await ensureExecutable("simfmt", {
     displayName: "SimplicityHL formatter",
     disableAutoupdateSetting: "formatter.disableAutoupdate",
+    updateCache,
   });
   if (formatterPath) {
     return formatterPath;
