@@ -35,6 +35,6 @@ void test("uses the first output line or an empty-output fallback when diagnosti
   );
   assert.equal(
     getFailureNotification("\n"),
-    'Formatting failed: "simfmt failed without reporting an error.".',
+    'Formatting failed: "simfmt failed without reporting an error".',
   );
 });

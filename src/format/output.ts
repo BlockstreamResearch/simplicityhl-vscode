@@ -35,6 +35,6 @@ export function getFailureNotification(output: string): string {
     return "Formatting failed. See the SimplicityHL Formatter output for details.";
   }
 
-  const message = output.trim().split(/\r?\n/)[0] || "simfmt failed without reporting an error.";
+  const message = output.trim().split(/\r?\n/)[0] || "simfmt failed without reporting an error";
   return `Formatting failed: "${message}".`;
 }
