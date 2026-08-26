@@ -5,13 +5,16 @@ import { ExtensionContext, commands } from "vscode";
 
 import { LspClient } from "./lsp/client";
 import { SimplicityHLCompiler } from "./compiler";
+import { SimplicityHLFormatter } from "./format";
 import { registerCompileCommands } from "./commands/compile";
-import { COMMAND_IDS } from "./contracts";
+import { registerFormattingCommands } from "./commands/format";
+import { COMMAND_IDS, FORMATTER_UPDATE_CACHE_KEY } from "./contracts";
 import { registerTaskProvider } from "./tasks/provider";
-import { registerFormattingCommands } from "./format";
+import { DailyUpdateCache } from "./update_cache";
 
 let client: LspClient | undefined;
 let compiler: SimplicityHLCompiler | undefined;
+let formatter: SimplicityHLFormatter | undefined;
 
 export function activate(context: ExtensionContext): void {
   // Initialize LSP client for language intelligence (also shows status bar)
@@ -33,14 +36,25 @@ export function activate(context: ExtensionContext): void {
     return compiler;
   });
   registerTaskProvider(context);      // Task integration (Tasks: Run Task)
-  registerFormattingCommands(context); // Formatting commands (Default format bindings)
+
+  const updateCache = new DailyUpdateCache(context.globalState, FORMATTER_UPDATE_CACHE_KEY);
+  registerFormattingCommands(context, () => {
+    if (!formatter) {
+      formatter = new SimplicityHLFormatter(updateCache);
+      context.subscriptions.push(formatter);
+    }
+    return formatter;
+  });
 }
 
 export async function deactivate(): Promise<void> {
   const activeClient = client;
   const activeCompiler = compiler;
+  const activeFormatter = formatter;
   client = undefined;
   compiler = undefined;
+  formatter = undefined;
   activeCompiler?.dispose();
+  activeFormatter?.dispose();
   await activeClient?.shutdown();
 }

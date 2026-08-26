@@ -2,6 +2,8 @@ export const CONFIGURATION_SECTION = "simplicityhl";
 export const LANGUAGE_CLIENT_ID = "simplicityhlLspClient";
 export const LANGUAGE_CLIENT_NAME = "SimplicityHL LSP";
 export const SERVER_BINARY = "simplicityhl-lsp";
+export const FORMATTER_BINARY = "simfmt";
+export const FORMATTER_UPDATE_CACHE_KEY = "simfmt.lastUpdateAttemptAt";
 export const TASK_TYPE = "simplicityhl";
 
 export const LANGUAGE_IDS = {
@@ -15,6 +17,7 @@ export const COMMAND_IDS = {
   compileFileDebug: "simplicityhl.compileFileDebug",
   compileWithWitness: "simplicityhl.compileWithWitness",
   compileJson: "simplicityhl.compileJson",
+  formatFile: "simplicityhl.formatFile",
 } as const;
 
 export const TASK_COMMANDS = [
@@ -39,6 +42,18 @@ export const SETTINGS = {
   compilerPath: {
     key: "compiler.path",
     default: "",
+  },
+  formatterPath: {
+    key: "formatter.path",
+    default: "",
+  },
+  autoSaveBeforeFormat: {
+    key: "formatter.autoSaveBeforeFormat",
+    default: true,
+  },
+  formatterDisableAutoupdate: {
+    key: "formatter.disableAutoupdate",
+    default: true,
   },
   autoSaveBeforeCompile: {
     key: "build.autoSaveBeforeCompile",
