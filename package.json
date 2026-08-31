@@ -15,6 +15,9 @@
     "Programming Languages"
   ],
   "main": "dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "languages": [
       {
@@ -240,7 +243,7 @@
     "compile": "npm run check-types && node esbuild.mjs --production",
     "check": "npm test && npm run eslint-check && npm run compile",
     "check-types": "tsc --noEmit",
-    "test": "node --test -r ts-node/register src/contracts.test.ts src/find_executable.test.ts",
+    "test": "node --test -r ts-node/register src/contracts.test.ts src/find_executable.test.ts src/update/binary_update_state.test.ts",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",

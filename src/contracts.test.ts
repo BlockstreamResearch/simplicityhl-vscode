@@ -24,7 +24,11 @@ void test("client languages and consumed settings match package contributions", 
     ),
   ) as Record<string, { default?: unknown }>;
 
-  for (const setting of [SETTINGS.serverPath, SETTINGS.imports, SETTINGS.enums]) {
+  for (const setting of [
+    SETTINGS.serverPath,
+    SETTINGS.imports,
+    SETTINGS.enums,
+  ]) {
     const contribution =
       contributedSettings[
         `${clientOptions.synchronize.configurationSection}.${setting.key}`
@@ -32,4 +36,6 @@ void test("client languages and consumed settings match package contributions", 
     assert.ok(contribution, `Missing package contribution for ${setting.key}`);
     assert.equal(contribution.default, setting.default);
   }
+
+  assert.deepEqual(manifest.activationEvents, ["onStartupFinished"]);
 });

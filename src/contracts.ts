@@ -1,13 +1,29 @@
 export const CONFIGURATION_SECTION = "simplicityhl";
 export const LANGUAGE_CLIENT_ID = "simplicityhlLspClient";
 export const LANGUAGE_CLIENT_NAME = "SimplicityHL LSP";
-export const SERVER_BINARY = "simplicityhl-lsp";
 export const TASK_TYPE = "simplicityhl";
 
 export const LANGUAGE_IDS = {
   source: "simplicityhl",
   witness: "simplicityhl-witness",
 } as const;
+
+export enum ManagedBinary {
+  Simfmt = "simfmt",
+  LanguageServer = "simplicityhl-lsp",
+}
+
+export const MANAGED_BINARY_INFO: Record<
+    ManagedBinary,
+    { displayName: string }
+> = {
+  [ManagedBinary.Simfmt]: {
+    displayName: "SimplicityHL formatter",
+  },
+  [ManagedBinary.LanguageServer]: {
+    displayName: "SimplicityHL language server",
+  },
+};
 
 export const COMMAND_IDS = {
   restartServer: "simplicityhl.restartServer",
