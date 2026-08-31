@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { test } from "node:test";
 
-import { SETTINGS, languageClientOptions } from "./contracts";
+import { COMMAND_IDS, SETTINGS, languageClientOptions } from "./contracts";
 
 void test("client languages and consumed settings match package contributions", () => {
   const manifest = JSON.parse(
@@ -28,6 +28,10 @@ void test("client languages and consumed settings match package contributions", 
     SETTINGS.serverPath,
     SETTINGS.imports,
     SETTINGS.enums,
+    SETTINGS.suppressMissingFormatterWarning,
+    SETTINGS.formatterPath,
+    SETTINGS.autoSaveBeforeFormat,
+    SETTINGS.formatterDisableAutoupdate,
   ]) {
     const contribution =
       contributedSettings[
@@ -37,5 +41,8 @@ void test("client languages and consumed settings match package contributions", 
     assert.equal(contribution.default, setting.default);
   }
 
+  assert.ok(contributions.commands.some(
+    ({ command }: { command: string }) => command === COMMAND_IDS.formatFile,
+  ));
   assert.deepEqual(manifest.activationEvents, ["onStartupFinished"]);
 });

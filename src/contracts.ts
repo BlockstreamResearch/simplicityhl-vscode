@@ -3,6 +3,10 @@ export const LANGUAGE_CLIENT_ID = "simplicityhlLspClient";
 export const LANGUAGE_CLIENT_NAME = "SimplicityHL LSP";
 export const TASK_TYPE = "simplicityhl";
 
+export const OUTPUT_CHANNEL_NAMES = {
+  formatter: "SimplicityHL Formatter",
+} as const;
+
 export const LANGUAGE_IDS = {
   source: "simplicityhl",
   witness: "simplicityhl-witness",
@@ -12,6 +16,19 @@ export enum ManagedBinary {
   Simfmt = "simfmt",
   LanguageServer = "simplicityhl-lsp",
 }
+
+export enum CrateName {
+  Simfmt = "simfmt",
+  LanguageServer = "simplicityhl-lsp",
+}
+
+export const MANAGED_BINARY_CRATE_NAMES: Record<
+  ManagedBinary,
+  CrateName
+> = {
+  [ManagedBinary.Simfmt]: CrateName.Simfmt,
+  [ManagedBinary.LanguageServer]: CrateName.LanguageServer,
+};
 
 export const MANAGED_BINARY_INFO: Record<
     ManagedBinary,
@@ -31,6 +48,7 @@ export const COMMAND_IDS = {
   compileFileDebug: "simplicityhl.compileFileDebug",
   compileWithWitness: "simplicityhl.compileWithWitness",
   compileJson: "simplicityhl.compileJson",
+  formatFile: "simplicityhl.formatFile",
 } as const;
 
 export const TASK_COMMANDS = [
@@ -55,6 +73,22 @@ export const SETTINGS = {
   compilerPath: {
     key: "compiler.path",
     default: "",
+  },
+  suppressMissingFormatterWarning: {
+    key: "suppressMissingFormatterWarning",
+    default: false,
+  },
+  formatterPath: {
+    key: "formatter.path",
+    default: "",
+  },
+  autoSaveBeforeFormat: {
+    key: "formatter.autoSaveBeforeFormat",
+    default: true,
+  },
+  formatterDisableAutoupdate: {
+    key: "formatter.disableAutoupdate",
+    default: false,
   },
   autoSaveBeforeCompile: {
     key: "build.autoSaveBeforeCompile",

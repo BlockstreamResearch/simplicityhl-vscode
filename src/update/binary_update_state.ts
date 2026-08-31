@@ -28,7 +28,7 @@ export type BinaryUpdateState = Partial<
 
 // Keep the key private so consumers cannot accidentally couple themselves to the
 // persistence format. Bumping the key version permits a future format migration.
-const STATE_KEY = "simplicityhl.binaryUpdateState.v1";
+export const STATE_KEY = "simplicityhl.binaryUpdateState.v1";
 
 type UnknownRecord = Record<string, unknown>;
 
