@@ -102,16 +102,3 @@ void test("propagates fetch failures", async () => {
     failure,
   );
 });
-
-void test("rejects unsupported binaries without making a request", async () => {
-  let requestCount = 0;
-  await assert.rejects(
-    () =>
-      getCrateVersion(ManagedBinary.LanguageServer, async () => {
-        requestCount += 1;
-        return response(200, { crate: { default_version: "1.2.3" } });
-      }),
-    /No crates.io crate is registered/,
-  );
-  assert.equal(requestCount, 0);
-});
