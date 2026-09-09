@@ -2,6 +2,9 @@
 node_modules/
 out/
 
+# jetbrains ides cache
+.idea/
+
 .pnpm-debug.log
 
 *.ast

@@ -15,6 +15,9 @@
     "Programming Languages"
   ],
   "main": "dist/extension.js",
+  "activationEvents": [
+    "onStartupFinished"
+  ],
   "contributes": {
     "languages": [
       {
@@ -95,6 +98,27 @@
             "default": "",
             "description": "Path to the simc compiler. If empty, searches PATH and common locations."
           },
+          "simplicityhl.suppressMissingFormatterWarning": {
+            "type": "boolean",
+            "default": false,
+            "description": "Do not show missing formatter executable warning."
+          },
+          "simplicityhl.formatter.path": {
+            "type": "string",
+            "default": "",
+            "scope": "machine-overridable",
+            "description": "Path to the simfmt formatter. If empty, searches PATH and common locations."
+          },
+          "simplicityhl.formatter.autoSaveBeforeFormat": {
+            "type": "boolean",
+            "default": true,
+            "description": "Automatically save the file before formatting."
+          },
+          "simplicityhl.formatter.disableAutoupdate": {
+            "type": "boolean",
+            "default": false,
+            "description": "Do not autoupdate simfmt formatter."
+          },
           "simplicityhl.build.autoSaveBeforeCompile": {
             "type": "boolean",
             "default": true,
@@ -118,6 +142,11 @@
         }
       }
     ],
+    "configurationDefaults": {
+      "[simplicityhl]": {
+        "editor.defaultFormatter": "Blockstream.simplicityhl"
+      }
+    },
     "commands": [
       {
         "command": "simplicityhl.restartServer",
@@ -144,6 +173,11 @@
         "command": "simplicityhl.compileJson",
         "title": "Compile to JSON",
         "category": "SimplicityHL"
+      },
+      {
+        "command": "simplicityhl.formatFile",
+        "title": "Format Current File",
+        "category": "SimplicityHL"
       }
     ],
     "menus": {
@@ -164,6 +198,11 @@
           "when": "resourceLangId == simplicityhl",
           "command": "simplicityhl.compileWithWitness",
           "group": "1_modification"
+        },
+        {
+          "when": "resourceLangId == simplicityhl",
+          "command": "simplicityhl.formatFile",
+          "group": "1_modification"
         }
       ],
       "commandPalette": [
@@ -181,6 +220,10 @@
         },
         {
           "command": "simplicityhl.compileJson",
+          "when": "resourceLangId == simplicityhl"
+        },
+        {
+          "command": "simplicityhl.formatFile",
           "when": "resourceLangId == simplicityhl"
         }
       ]
@@ -240,7 +283,7 @@
     "compile": "npm run check-types && node esbuild.mjs --production",
     "check": "npm test && npm run eslint-check && npm run compile",
     "check-types": "tsc --noEmit",
-    "test": "node --test -r ts-node/register src/contracts.test.ts src/find_executable.test.ts",
+    "test": "node --test -r ts-node/register src/contracts.test.ts src/find_executable.test.ts src/update/binary_update_state.test.ts src/update/crates_io.test.ts src/format/updater.test.ts src/format/output.test.ts",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.mjs --watch",
     "watch:tsc": "tsc --noEmit --watch --project tsconfig.json",
@@ -254,6 +297,7 @@
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^22",
+    "@types/semver": "^7.8.0",
     "@types/vscode": "1.91.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.25.9",
@@ -266,6 +310,7 @@
     "typescript-eslint": "^8.65.0"
   },
   "dependencies": {
+    "semver": "^7.8.5",
     "vscode-languageclient": "^10.1.0"
   }
 }

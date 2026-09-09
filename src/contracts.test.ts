@@ -3,7 +3,7 @@ import * as fs from "node:fs";
 import * as path from "node:path";
 import { test } from "node:test";
 
-import { SETTINGS, languageClientOptions } from "./contracts";
+import { COMMAND_IDS, SETTINGS, languageClientOptions } from "./contracts";
 
 void test("client languages and consumed settings match package contributions", () => {
   const manifest = JSON.parse(
@@ -24,7 +24,15 @@ void test("client languages and consumed settings match package contributions", 
     ),
   ) as Record<string, { default?: unknown }>;
 
-  for (const setting of [SETTINGS.serverPath, SETTINGS.imports, SETTINGS.enums]) {
+  for (const setting of [
+    SETTINGS.serverPath,
+    SETTINGS.imports,
+    SETTINGS.enums,
+    SETTINGS.suppressMissingFormatterWarning,
+    SETTINGS.formatterPath,
+    SETTINGS.autoSaveBeforeFormat,
+    SETTINGS.formatterDisableAutoupdate,
+  ]) {
     const contribution =
       contributedSettings[
         `${clientOptions.synchronize.configurationSection}.${setting.key}`
@@ -32,4 +40,9 @@ void test("client languages and consumed settings match package contributions", 
     assert.ok(contribution, `Missing package contribution for ${setting.key}`);
     assert.equal(contribution.default, setting.default);
   }
+
+  assert.ok(contributions.commands.some(
+    ({ command }: { command: string }) => command === COMMAND_IDS.formatFile,
+  ));
+  assert.deepEqual(manifest.activationEvents, ["onStartupFinished"]);
 });

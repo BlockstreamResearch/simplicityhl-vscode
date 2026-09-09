@@ -18,9 +18,9 @@ import {
   CONFIGURATION_SECTION,
   LANGUAGE_CLIENT_ID,
   LANGUAGE_CLIENT_NAME,
-  SERVER_BINARY,
   SETTINGS,
   languageClientOptions,
+  ManagedBinary,
 } from "../contracts";
 import { getExperimentalFeatures } from "../settings";
 import { ensureExecutable } from "./install";
@@ -93,7 +93,7 @@ export class LspClient {
       }
       execPath = resolvedPath;
     } else {
-      execPath = await ensureExecutable(SERVER_BINARY);
+      execPath = await ensureExecutable(ManagedBinary.LanguageServer);
     }
 
     if (!this.isCurrent(request)) {
@@ -192,7 +192,9 @@ export class LspClient {
       }
       await this.startNow(request);
       if (this.isCurrent(request) && this.client) {
-        window.showInformationMessage("SimplicityHL Language Server restarted successfully!");
+        window.showInformationMessage(
+          "SimplicityHL Language Server restarted successfully!",
+        );
       }
     } catch (e) {
       if (!this.isCurrent(request)) {
