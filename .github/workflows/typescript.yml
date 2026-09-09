@@ -2,18 +2,10 @@ name: VS Code extension
 
 on:
   push:
-    branches:
-      - master
-    paths:
-      - ./'**'
-      - '.github/workflows/typescript.yml'
   pull_request:
     branches:
       - master
-    paths:
-      - './**'
-      - '.github/workflows/typescript.yml'
-  workflow_dispatch:
+      - 'test-ci/**'
 
 jobs:
   checks:
