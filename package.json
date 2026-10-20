@@ -110,6 +110,11 @@
             "type": "boolean",
             "default": false,
             "description": "Enable the compiler's experimental enum declarations, construction, and matching in the language server and direct simc commands."
+          },
+          "simplicityhl.experimentalFeatures.rawHash": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable the compiler's experimental raw_hash builtin for hashing tuples of unsigned integers in the language server and direct simc commands."
           }
         }
       }
