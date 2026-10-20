@@ -10,7 +10,7 @@ void test("client languages and consumed settings match package contributions", 
     fs.readFileSync(path.join(__dirname, "../package.json"), "utf8"),
   );
   const contributions = manifest.contributes;
-  const clientOptions = languageClientOptions({ imports: true, enums: false });
+  const clientOptions = languageClientOptions({ imports: true, enums: false, rawHash: false });
 
   assert.deepEqual(
     clientOptions.documentSelector.map(({ language }) => language),
@@ -24,7 +24,7 @@ void test("client languages and consumed settings match package contributions", 
     ),
   ) as Record<string, { default?: unknown }>;
 
-  for (const setting of [SETTINGS.serverPath, SETTINGS.imports, SETTINGS.enums]) {
+  for (const setting of [SETTINGS.serverPath, SETTINGS.imports, SETTINGS.enums, SETTINGS.rawHash]) {
     const contribution =
       contributedSettings[
         `${clientOptions.synchronize.configurationSection}.${setting.key}`

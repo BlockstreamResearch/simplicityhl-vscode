@@ -52,6 +52,10 @@ export const SETTINGS = {
     key: "experimentalFeatures.enums",
     default: false,
   },
+  rawHash: {
+    key: "experimentalFeatures.rawHash",
+    default: false,
+  },
 } as const;
 
 export type TaskCommand = (typeof TASK_COMMANDS)[number];
@@ -59,6 +63,7 @@ export type TaskCommand = (typeof TASK_COMMANDS)[number];
 export interface ExperimentalFeatures {
   imports: boolean;
   enums: boolean;
+  rawHash: boolean;
 }
 
 export function languageClientOptions(features: ExperimentalFeatures) {

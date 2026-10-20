@@ -2,7 +2,7 @@
   "name": "simplicityhl",
   "displayName": "SimplicityHL Language Support",
   "description": "Syntax highlighting and autocompletion for SimplicityHL language",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "publisher": "Blockstream",
   "repository": {
     "type": "git",
@@ -110,6 +110,11 @@
             "type": "boolean",
             "default": false,
             "description": "Enable the compiler's experimental enum declarations, construction, and matching in the language server and direct simc commands."
+          },
+          "simplicityhl.experimentalFeatures.rawHash": {
+            "type": "boolean",
+            "default": false,
+            "description": "Enable the compiler's experimental raw_hash builtin for hashing tuples of unsigned integers in the language server and direct simc commands."
           }
         }
       }

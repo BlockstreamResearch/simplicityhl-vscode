@@ -16,6 +16,9 @@ export function compilerFeatureArguments(
   if (features.enums) {
     args.push("-Z", "enums");
   }
+  if (features.rawHash) {
+    args.push("-Z", "raw_hash");
+  }
   return args;
 }
 

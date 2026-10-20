@@ -11,5 +11,6 @@ export function getExperimentalFeatures(): ExperimentalFeatures {
   return {
     imports: configuration.get<boolean>(SETTINGS.imports.key, SETTINGS.imports.default),
     enums: configuration.get<boolean>(SETTINGS.enums.key, SETTINGS.enums.default),
+    rawHash: configuration.get<boolean>(SETTINGS.rawHash.key, SETTINGS.rawHash.default),
   };
 }
