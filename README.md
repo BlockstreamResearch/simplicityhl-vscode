@@ -10,7 +10,7 @@ SimplicityHL is a high-level language for writing Simplicity smart contracts. Si
 
 - Syntax highlighting and snippets for `.simf` and `.wit` files
 - Compiler diagnostics, completion, hover, signature help, symbols, references, and go to definition
-- Opt-in imports and enums support in the language server and direct compiler commands
+- Opt-in imports, enums, and `raw_hash` support in the language server and direct compiler commands
 
 The extension installs or connects to the [SimplicityHL language server][4], which provides language intelligence:
 
@@ -22,11 +22,11 @@ The extension installs or connects to the [SimplicityHL language server][4], whi
 
 ## Experimental features
 
-Open Settings and search for `SimplicityHL: Experimental Features`. `Imports` and `Enums` are independent checkboxes and both are disabled by default.
+Open Settings and search for `SimplicityHL: Experimental Features`. `Imports`, `Enums`, and `Raw Hash` are independent checkboxes and all are disabled by default.
 
-Import and module syntax requires `simplicityhl.experimentalFeatures.imports`. Enum syntax requires `simplicityhl.experimentalFeatures.enums`. The extension sends these choices to the LSP and adds the matching `-Z` flags to its direct `simc` commands and tasks.
+Import and module syntax requires `simplicityhl.experimentalFeatures.imports`. Enum syntax requires `simplicityhl.experimentalFeatures.enums`. The `raw_hash::<T>(tuple)` builtin requires `simplicityhl.experimentalFeatures.rawHash`. The extension sends these choices to the LSP and adds the matching `-Z` flags to its direct `simc` commands and tasks.
 
-The enum switch requires `simplicityhl-lsp` and `simc` 0.7.0 or newer.
+The enum switch requires `simplicityhl-lsp` and `simc` 0.7.0 or newer. The `raw_hash` required 0.9.0 or newer.
 
 The language server owns `Simplex.toml` discovery and imported-file analysis. The extension does not duplicate that resolver. Direct `simc` commands currently add feature flags only; they do not translate Simplex dependencies into `--dep` arguments. Use the project build tooling or invoke `simc` with the required dependency mappings for projects with external imports.
 
@@ -34,7 +34,7 @@ For local extension development, `simplicityhl.server.path` can point to a local
 
 ### Development
 
-To install the extension manually or hack on the source code see [development.md][9]
+To install the extension manually or hack on the source code see [development.md][8]
 
 [1]: https://github.com/BlockstreamResearch/SimplicityHL
 [2]: https://github.com/BlockstreamResearch/simplicity
