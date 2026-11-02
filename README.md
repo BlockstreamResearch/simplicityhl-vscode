@@ -11,6 +11,7 @@ SimplicityHL is a high-level language for writing Simplicity smart contracts. Si
 - Syntax highlighting and snippets for `.simf` and `.wit` files
 - Compiler diagnostics, completion, hover, signature help, symbols, references, and go to definition
 - Opt-in imports and enums support in the language server and direct compiler commands
+- Formatting with [simfmt][5], the formatter behind `simplex fmt`
 
 The extension installs or connects to the [SimplicityHL language server][4], which provides language intelligence:
 
@@ -19,6 +20,15 @@ The extension installs or connects to the [SimplicityHL language server][4], whi
 
 - Completion of user-defined functions, imported items, built-ins, and jets
 ![completion][7]
+
+- Formatting of SimplicityHL code
+![formatting][8]
+
+## Formatting
+
+The language server formats `.simf` files with the same `simfmt` that `simplex fmt` runs, so editor formatting and `simplex fmt --check` give the same result. Install it with `simplexup`. The extension sets itself as the default formatter for SimplicityHL, so **Format Document** and `editor.formatOnSave` work without extra setup. The nearest `simfmt.toml` applies.
+
+To use a different `simfmt` binary, set `simplicityhl.formatter.path`. Formatting requires `simplicityhl-lsp` 0.9.0 or newer.
 
 ## Experimental features
 
@@ -43,4 +53,5 @@ To install the extension manually or hack on the source code see [development.md
 [5]: https://github.com/BlockstreamResearch/simfmt
 [6]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/error_diagnostic.gif
 [7]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/completion.gif
-[8]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/docs/development.md
+[8]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/assets/formatting.gif
+[9]: https://raw.githubusercontent.com/BlockstreamResearch/simplicityhl-vscode/master/docs/development.md
