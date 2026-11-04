@@ -2,7 +2,7 @@
   "name": "simplicityhl",
   "displayName": "SimplicityHL Language Support",
   "description": "Syntax highlighting and autocompletion for SimplicityHL language",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "publisher": "Blockstream",
   "repository": {
     "type": "git",
@@ -91,6 +91,12 @@
             "default": "",
             "description": "Path to the simc compiler. If empty, searches PATH and common locations."
           },
+          "simplicityhl.formatter.path": {
+            "type": "string",
+            "default": "",
+            "scope": "machine",
+            "description": "Path to the simfmt formatter used by the language server. If empty, the server uses the simfmt that `simplex fmt` runs, then any simfmt on PATH."
+          },
           "simplicityhl.build.autoSaveBeforeCompile": {
             "type": "boolean",
             "default": true,
@@ -114,6 +120,11 @@
         }
       }
     ],
+    "configurationDefaults": {
+      "[simplicityhl]": {
+        "editor.defaultFormatter": "Blockstream.simplicityhl"
+      }
+    },
     "commands": [
       {
         "command": "simplicityhl.restartServer",
@@ -249,7 +260,7 @@
   "icon": "icon.png",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/node": "^22",
+    "@types/node": "^22.20.5",
     "@types/vscode": "1.91.0",
     "@vscode/vsce": "^3.9.2",
     "esbuild": "^0.25.9",
