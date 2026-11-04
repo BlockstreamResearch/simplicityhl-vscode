@@ -28,7 +28,7 @@ The extension installs or connects to the [SimplicityHL language server][4], whi
 
 The language server formats `.simf` files with the same `simfmt` that `simplex fmt` runs, so editor formatting and `simplex fmt --check` give the same result. Install it with `simplexup`. The extension sets itself as the default formatter for SimplicityHL, so **Format Document** and `editor.formatOnSave` work without extra setup. The nearest `simfmt.toml` applies.
 
-To use a different `simfmt` binary, set `simplicityhl.formatter.path`. Formatting requires `simplicityhl-lsp` 0.9.0 or newer.
+To use a different `simfmt` binary, set `simplicityhl.formatter.path` in your user settings. Formatting requires `simplicityhl-lsp` 0.9.1 or newer.
 
 ## Experimental features
 
