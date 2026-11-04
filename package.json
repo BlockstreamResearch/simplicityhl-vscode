@@ -94,7 +94,7 @@
           "simplicityhl.formatter.path": {
             "type": "string",
             "default": "",
-            "scope": "machine-overridable",
+            "scope": "machine",
             "description": "Path to the simfmt formatter used by the language server. If empty, the server uses the simfmt that `simplex fmt` runs, then any simfmt on PATH."
           },
           "simplicityhl.build.autoSaveBeforeCompile": {
