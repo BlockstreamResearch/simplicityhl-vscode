@@ -7,6 +7,7 @@ export const TASK_TYPE = "simplicityhl";
 export const LANGUAGE_IDS = {
   source: "simplicityhl",
   witness: "simplicityhl-witness",
+  raw: "simplicity",
 } as const;
 
 export const COMMAND_IDS = {
@@ -66,6 +67,7 @@ export function languageClientOptions(features: ExperimentalFeatures) {
     documentSelector: [
       { scheme: "file", language: LANGUAGE_IDS.source },
       { scheme: "file", language: LANGUAGE_IDS.witness },
+      { scheme: "file", language: LANGUAGE_IDS.raw },
     ],
     initializationOptions: {
       simplicityhl: {

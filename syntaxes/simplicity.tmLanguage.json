@@ -1,0 +1,42 @@
+{
+  "name": "Simplicity",
+  "scopeName": "source.simplicity",
+  "patterns": [
+    {
+      "name": "comment.line.double-dash.simplicity",
+      "match": "--.*"
+    },
+    {
+      "name": "keyword.control.combinator.simplicity",
+      "match": "(?:assertl|assertr|case|comp|const|disconnect|drop|fail|iden|injl|injr|pair|take|unit|witness)(?![a-zA-Z0-9_.'-])"
+    },
+    {
+      "name": "support.function.jet.simplicity",
+      "match": "jet_[a-z0-9_]+(?![a-zA-Z0-9_.'-])"
+    },
+    {
+      "name": "constant.numeric.simplicity",
+      "match": "0b[01]+|0x[0-9a-f]+|#[a-fA-F0-9]{64}"
+    },
+    {
+      "name": "storage.type.simplicity",
+      "match": "2\\^[1-9][0-9]*|[12]"
+    },
+    {
+      "name": "constant.language.simplicity",
+      "match": "_(?![a-zA-Z0-9_.'-])"
+    },
+    {
+      "name": "keyword.operator.simplicity",
+      "match": ":=|->|[:+*?]"
+    },
+    {
+      "name": "punctuation.section.simplicity",
+      "match": "#\\{|[(){}]"
+    },
+    {
+      "name": "variable.other.simplicity",
+      "match": "[a-zA-Z_.'-][a-zA-Z0-9_.'-]*"
+    }
+  ]
+}

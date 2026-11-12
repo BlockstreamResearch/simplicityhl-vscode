@@ -46,6 +46,16 @@
           "light": "./icons/wit.svg"
         },
         "configuration": "./witness-configuration.json"
+      },
+      {
+        "id": "simplicity",
+        "aliases": ["Simplicity"],
+        "extensions": [".simpl"],
+        "icon": {
+          "dark": "./icons/simpl.svg",
+          "light": "./icons/simpl.svg"
+        },
+        "configuration": "./simplicity-configuration.json"
       }
     ],
     "grammars": [
@@ -58,6 +68,11 @@
         "language": "simplicityhl-witness",
         "scopeName": "source.wit",
         "path": "./syntaxes/witness.tmLanguage.json"
+      },
+      {
+        "language": "simplicity",
+        "scopeName": "source.simplicity",
+        "path": "./syntaxes/simplicity.tmLanguage.json"
       }
     ],
     "snippets": [
